@@ -793,8 +793,13 @@ def getPortFromXML(xmlName):
 #》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》  stop相关功能
 
 
-def stopCheck(dir,port,):
-
+def stopCheck(dir,port):
+    '''
+    检查文件是否关闭
+    :param dir:
+    :param port:
+    :return:
+    '''
     pass
 
 def stopFileCreate(dir,port,sec):
