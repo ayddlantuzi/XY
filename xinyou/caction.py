@@ -431,10 +431,6 @@ def compare_cmd_client(currentGame,cmd_1):
 
 
 
-
-
-
-
 def sendMSG(msg,currentGame):
     '''
     发送消息  到对应的服务器 并接受反馈的消息
