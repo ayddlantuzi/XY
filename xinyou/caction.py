@@ -452,7 +452,7 @@ def sendMSG(msg,currentGame):
 
 def endAction(msg):
     '''
-    接受服务器消息 进行相关操作
+    接受服务器消息  进行相关操作
     :param msg:
     :return:
     '''
