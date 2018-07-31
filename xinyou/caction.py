@@ -461,7 +461,7 @@ def endAction(msg):
 
 def pringMSG(msg):
     '''
-    打印 服务器返回的  打印消息
+    打印 服务器返回的 打印消息
     :param msg: 打印消息
     :return:
     '''
