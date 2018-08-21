@@ -338,9 +338,10 @@ def command_ServerCheck(cmdList,serverGameInfo):
     if cmdList[0] == 'start':
         if ',' in cmdList[2]:
             room = cmdList[2].split(',')
-            msg = runServiceLoader(gamedir+'\\'+currentGame,room)
         else:
-            msg = runServiceLoader(gamedir+'\\'+currentGame,cmdList[2])
+            room = cmdList[2]
+        msg = runServiceLoader(gamedir+'\\'+currentGame,room)
+
     elif cmdList[0] == 'stop':
         msg = stop_cmd_server(gamedir,currentGame,cmdList[2],cmdList[3])
 
@@ -682,24 +683,6 @@ def format_printMSG(plist,align_column_int,align_column_maxlen):
     return msgStr[:-1]
 
 
-def stop_cmd_server(gamedir,currentGame,info,stopSEC):
-    '''
-    关闭房间
-    :param gamedir:
-    :param currentGame:
-    :param info:
-    :return:
-    '''
-
-    # 检查 关闭 房间端口的合格     房间端口是否存在，房间端口是否开着
-    room = info.split(',')
-
-
-
-
-
-
-
 
 def show_cmd_server(gamedir,currentGame,info):
     '''
@@ -807,6 +790,39 @@ def getPortFromXML(xmlName):
 
 
 #》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》》  stop相关功能
+def stop_cmd_server(gamedir,currentGame,info,stopSEC):
+    '''
+    关闭房间
+    :param gamedir:
+    :param currentGame:
+    :param info:
+    :return:
+    '''
+
+
+    # 检查 关闭 房间端口的合格     房间端口是否存在，房间端口是否开着
+    if ',' in info:
+        room = info.split(',')
+    else:
+        room = info
+
+    path = gamedir + '\\' + currentGame
+
+    xml_list_getgamexml,error_msg_1 = get_gamexmlANDport(path,xml)
+    xml_list,return_msg = check_xml_port_open(xml_list_getgamexml)
+    return_msg.extend(error_msg_1)
+
+    if xml_list[0][0] > 0:
+        for i in xml_list[0][1]:
+        return_msg.append(i + '  房间正在关闭中！')
+
+        # 关闭操作
+        pass
+
+    return return_msg
+
+
+
 
 
 def stopCheck(dir,port):
@@ -839,7 +855,7 @@ def getName_gateway_match():
 
 
 
-def closeWindowAction(window,type):
+def closeWindowAction(window,type='stop'):
     '''
     关闭窗口
     :return:
@@ -850,7 +866,7 @@ def closeWindowAction(window,type):
     # 获取窗口焦点
     win32gui.SetForegroundWindow(window)
 
-    if type =='close':
+    if type =='stop':
         win32api.keybd_event(17, 0, 0, 0)
         win32api.keybd_event(67, 0, 0, 0)
         win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -860,7 +876,7 @@ def closeWindowAction(window,type):
         win32api.keybd_event(67, 0, 0, 0)
         win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
         win32api.keybd_event(67, 0, win32con.KEYEVENTF_KEYUP, 0)
-    elif type == 'enter':
+    elif type == 'close':
         win32api.keybd_event(13, 0, 0, 0)
         win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -932,7 +948,7 @@ def stopMatch(nameList_gateway_match):
                 break
             if nameGateway in win32gui.GetWindowText(h):
                 # 关闭窗口
-                closeWindowAction(h,'close')
+                closeWindowAction(h)
                 ophWndList.append(h)
                 msgsuccess.append(nameGateway+' 关闭成功！')
                 nameList_gateway_match.remove(nameGateway)
@@ -940,7 +956,7 @@ def stopMatch(nameList_gateway_match):
 
     if breakTab > 2:
         time.sleep(0.5)
-        closeWindowAction(ophWndList[0],'close')
+        closeWindowAction(ophWndList[0])
         msgsuccess.append(matchName + ' 关闭成功！')
 
     else:
@@ -950,9 +966,9 @@ def stopMatch(nameList_gateway_match):
         msg.append(gateway+ ' 未找到！')
 
 
-    # 启动 定时器 做最后的关闭   ？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
+    # 启动 定时器 做最后的关闭   ？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？   待修改
     for wnd in ophWndList:
-        closeWindowAction(wnd,'enter')
+        closeWindowAction(wnd,'close')
 
 
 
