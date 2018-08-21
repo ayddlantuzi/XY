@@ -9,7 +9,7 @@ import tempfile
 import time
 import subprocess
 import shutil
-
+import win32gui,win32api,win32con
 
 gamedir = ''
 # 默认桌面目录
@@ -42,7 +42,6 @@ def runServiceLoader(path,xml):
         for xml_name in xml_list[1]:
             a=subprocess.run("for /f %i in (\'dir \""+path+"\\run\\"+xml_name+"\" /s /b\') do (start "+path+"\\ServiceLoader.exe \"auto\" \"%i\" && ping 127.0.0.1 /n 3 >nul)",stdout=fileno,shell=True)
             # a=subprocess.run("for /f %i in (\'dir \""+path+"\\run\\"+xml_name+".xml\" /s /b\') do (start "+path+"\\ServiceLoader.exe \"auto\" \"%i\" && ping 127.0.0.1 /n 3 >nul)",stdout=fileno,shell=True)
-
             time.sleep(0.5)
         # a.wait()
         out_temp.seek(0)
@@ -327,8 +326,6 @@ def command_ServerCheck(cmdList,serverGameInfo):
     :return:
     '''
     global  gamedir
-
-
     currentGame = cmdList[1]
     # 检测游戏目录是否匹配
     if currentGame in serverGameInfo[0]:
@@ -344,6 +341,8 @@ def command_ServerCheck(cmdList,serverGameInfo):
             msg = runServiceLoader(gamedir+'\\'+currentGame,room)
         else:
             msg = runServiceLoader(gamedir+'\\'+currentGame,cmdList[2])
+    elif cmdList[0] == 'stop':
+        msg = stop_cmd_server(gamedir,currentGame,cmdList[2],cmdList[3])
 
     elif cmdList[0] == 'show':
         msg = show_cmd_server(gamedir,currentGame,cmdList[2])
@@ -683,6 +682,24 @@ def format_printMSG(plist,align_column_int,align_column_maxlen):
     return msgStr[:-1]
 
 
+def stop_cmd_server(gamedir,currentGame,info,stopSEC):
+    '''
+    关闭房间
+    :param gamedir:
+    :param currentGame:
+    :param info:
+    :return:
+    '''
+
+    # 检查 关闭 房间端口的合格     房间端口是否存在，房间端口是否开着
+    room = info.split(',')
+
+
+
+
+
+
+
 
 def show_cmd_server(gamedir,currentGame,info):
     '''
@@ -692,7 +709,6 @@ def show_cmd_server(gamedir,currentGame,info):
     :param info: 显示的内容  room 房间(包括是否启用）   file  文件(包括修改时间)
     :return: 返回打印的消息
     '''
-
     msg = ''
     msgList = []
     maxlen = 0
@@ -814,6 +830,131 @@ def stopFileCreate(dir,port,sec):
     :param sec:  关闭的时间
     :return:
     '''
+
+    pass
+
+
+def getName_gateway_match():
+    pass
+
+
+
+def closeWindowAction(window,type):
+    '''
+    关闭窗口
+    :return:
+    '''
+
+    # 显示窗口
+    win32gui.ShowWindow(window, win32con.SW_RESTORE)
+    # 获取窗口焦点
+    win32gui.SetForegroundWindow(window)
+
+    if type =='close':
+        win32api.keybd_event(17, 0, 0, 0)
+        win32api.keybd_event(67, 0, 0, 0)
+        win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32api.keybd_event(67, 0, win32con.KEYEVENTF_KEYUP, 0)
+        time.sleep(0.1)
+        win32api.keybd_event(17, 0, 0, 0)
+        win32api.keybd_event(67, 0, 0, 0)
+        win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32api.keybd_event(67, 0, win32con.KEYEVENTF_KEYUP, 0)
+    elif type == 'enter':
+        win32api.keybd_event(13, 0, 0, 0)
+        win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    # # 回车
+    # win32api.keybd_event(13, 0, 0, 0)
+    # win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # # shutdown
+    # win32api.keybd_event(83, 0, 0, 0)
+    # win32api.keybd_event(83, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(72, 0, 0, 0)
+    # win32api.keybd_event(72, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(85, 0, 0, 0)
+    # win32api.keybd_event(85, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(84, 0, 0, 0)
+    # win32api.keybd_event(84, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(68, 0, 0, 0)
+    # win32api.keybd_event(68, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(79, 0, 0, 0)
+    # win32api.keybd_event(79, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(87, 0, 0, 0)
+    # win32api.keybd_event(87, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(78, 0, 0, 0)
+    # win32api.keybd_event(78, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # # 回车
+    # win32api.keybd_event(13, 0, 0, 0)
+    # win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(13, 0, 0, 0)
+    # win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+    # win32api.keybd_event(13, 0, 0, 0)
+    # win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+
+
+def stopMatch(nameList_gateway_match):
+    '''
+    关闭比赛
+    :param nameList_match_gateway:   gateway 和 match 的窗口名称       List末尾的match  末尾前面的都是gateway
+    :return: 返回关闭 比赛和网关的消息
+    '''
+
+    # 列出所有的顶级窗口
+    hWndList = []
+    win32gui.EnumWindows(lambda hWnd, param: param.append(hWnd), hWndList)
+
+    # match
+    matchName = nameList_gateway_match.pop()
+    gateway
+    numGateWay = len(nameList_gateway_match)
+    msg = []
+    msgsuccess = []
+    ophWndList = []
+    count = 0
+    breakTab = 0
+
+    for h in hWndList:
+        if not h:
+            return 0
+        # gateWay窗口都关闭  +1   match找到 +3
+        if breakTab == 3 + numGateWay:
+            break
+
+        if matchName in win32gui.GetWindowText(h):
+            ophWndList.insert(0,h)
+            breakTab += 3
+            continue
+
+        for nameGateway in nameList_gateway_match[:]:
+            if count == numGateway:
+                break
+            if nameGateway in win32gui.GetWindowText(h):
+                # 关闭窗口
+                closeWindowAction(h,'close')
+                ophWndList.append(h)
+                msgsuccess.append(nameGateway+' 关闭成功！')
+                nameList_gateway_match.remove(nameGateway)
+                count += 1
+
+    if breakTab > 2:
+        time.sleep(0.5)
+        closeWindowAction(ophWndList[0],'close')
+        msgsuccess.append(matchName + ' 关闭成功！')
+
+    else:
+        msg.append(matchName+' 未找到！')
+
+    for gateway in nameList_gateway_match:
+        msg.append(gateway+ ' 未找到！')
+
+
+    # 启动 定时器 做最后的关闭   ？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
+    for wnd in ophWndList:
+        closeWindowAction(wnd,'enter')
+
+
 
 
 

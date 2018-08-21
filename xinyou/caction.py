@@ -153,6 +153,8 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             return False
         elif cmdList[0] == 'start':
             return start_check(cmdList)
+        elif cmdList[0] == 'stop':
+            return stop_check(currentGame[1],cmdList)
         elif cmdList[0] == 'get':
             return get_check(currentGame[1],desktop_dir,cmdList)
         elif cmdList[0] == 'put':
@@ -238,6 +240,17 @@ def show_check(currentGame,cmd):
         print('show '+cmd[1]+'命令错误！')
         print('使用help show 参考命令使用方法！')
         return False
+
+def stop_check(currentGame,cmd):
+    cf = configparser.SafeConfigParser()
+    cf.read('config.ini')
+    try:
+        stopsec = cf.get('stopSEC', currentGame)
+    except Exception as e:
+        print('配置文件config.ini 中，未配置  ' + currentGame+' 的默认停止时间！')
+        return False
+    cmd.insert(2,int(stopsec))
+    return cmd
 
 
 
@@ -471,7 +484,7 @@ def help(cmd=''):
     :param cmd:   cmd不是action动作的时候 默认help帮助提示
     :return:
     '''
-    actionCMD = ['start', 'update', 'get', 'put', 'show', 'back', 'compare']
+    actionCMD = ['start','stop','update', 'get', 'put', 'show', 'back', 'compare']
     if cmd == '' or cmd not in actionCMD:
         print('在选择游戏名称后  使用多命令进行管理\n\n'
               '单命令:\n'
@@ -489,8 +502,8 @@ def help(cmd=''):
               'compare 命令  比对 游戏目录  和 SVN 中的文件日期\n'
               '以上 命令使用help+动作命令  获得更详细的帮助！例如 help start')
     elif cmd == 'start':
-        print('start 命令 可以单个、多个、全部 启用游戏房间\n'
-              '进入游戏目录有 使用show room 可以查看游戏的房间配置文件\n'
+        print('start 命令 可以单个、多个、全部  启动当前管理游戏的房间\n'
+              '进入游戏目录后 使用show room 可以查看游戏的房间配置文件\n'
 
               '例：\n'
               '26CrazyRunFastServer:>show room\n'
@@ -504,7 +517,21 @@ def help(cmd=''):
               '注意事项：游戏房间配置文件 命名规则    *******12601.xml  文件名最后5位为房间端口号！\n'
               '         端口号          命名规则    100+kindid**  最后两位编号\n'
               '         例： 跑得快  kindID 26     端口号应为126**  12601新手场  12611初级场  12621中级场')
-
+    elif cmd == 'stop':
+        print('stop 命令 可以单个、多个、全部  关闭当前管理游戏的房间\n'
+              '进入游戏目录后  使用show room 可以查看当前游戏的房间 启动状态\n'
+              '例：\n'
+              '26CrazyRunFastServer:>show room\n'
+              '手机疯狂跑得快初级场12610.xml        》》》》已启用！\n'
+              '疯狂跑得快中级场12621.xml            》》》》已启用！\n'
+              '疯狂跑得快初级场12611.xml            》》》》已启用！\n'
+              '疯狂跑得快新手场12601.xml            》》》》已启用！\n'
+              '疯狂跑得快顶级场12631.xml            =====未启用！\n'
+              ''
+              '命令使用方法 stop 12610     stop 12601,12611     stop all\n'
+              '注意事项：游戏房间配置文件 命名规则    *******12601.xml  文件名最后5位为房间端口号！\n'
+              '         端口号          命名规则    100+kindid**  最后两位编号\n'
+              '         例： 跑得快  kindID 26     端口号应为126**  12601新手场  12611初级场  12621中级场')
     elif cmd == 'update':
         print('update 命令 用于更新游戏文件,文件从本地svn目录自动获取\n'
               'update dll  svn游戏单款dll 更新到游戏目录  旧的单款dll 文件会备份到 游戏目录back\dll中，使用back dll还原本次操作\n'
