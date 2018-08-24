@@ -10,18 +10,6 @@ currentMsg = ''
 allGameInfo = []
 
 
-# a = gsClient('1',('127.0.0.1',21568))
-# print(a.connect())
-# print(a.GSname)
-# a.send('test')
-# data = a.receive()
-# print(data)
-# a.close()
-# a.connect()
-# a.send('test222222')
-# data = a.receive()
-# print(data)
-# a.close()1
 
 # 从config.ini获取 所有连接的配置信息  ip  port
 serverList = getServerIpPort()
@@ -68,9 +56,10 @@ while True:
         transfer_File(currentGame,returnMSG[1],'update')
     elif returnMSG[0] == 'compare':
         compare_cmd_client(currentGame[1],returnMSG[1])
+    elif returnMSG[0] == 'stopRoom':
+        stopSyc(currentGame)
     else:
         pass
-
 
         # 解析返回的消息
 

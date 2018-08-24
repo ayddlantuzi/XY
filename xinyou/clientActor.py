@@ -52,9 +52,6 @@ class gsClient:
         except Exception as e:
             print(e)
 
-
-
-
 def getClientGroup(serverIpPortList):
     '''
     获得所有服务器连接

@@ -6,6 +6,8 @@ import os
 import json
 import time
 import paramiko
+import threading
+
 from xinyou import saction
 global cmdaction,desktop_dir
 
@@ -14,6 +16,9 @@ cmdaction = ['start','stop','update','get','put','show','back','compare','mode']
 desktop_dir = ''
 svnServiceLoader_dir = ''
 dlls_dir = ''
+timerList = []
+timerLock = threading.Lock()
+
 
 def getServerIpPort():
     '''
@@ -476,6 +481,50 @@ def pringMSG(msg):
     '''
     pass
 
+
+def stopSyc(client):
+    global timerList,timerLock
+
+    timerLock.acquire()
+    timerList.append(client[0])
+    timerLock.release()
+    fun_timer()
+
+
+def checkStopMSG(revList):
+    if revList == ['Wait']:
+        return False
+    elif revList == ['None']:
+        return True
+    else:
+        for i in revList:
+            print(i)
+
+def fun_timer():
+    global timer,timerList,timerLock
+    if timerList == []:
+        timer.cancel()
+        return
+
+    msg = ['checkMSG']
+
+    timerLock.acquire()
+    for i in timerList[:]:
+        msgstr = json.dumps(msg)
+        i.connect()
+        i.send(msgstr)
+        revstr = i.receive()
+        i.close()
+        revMSG = json.loads(revstr)
+        if checkStopMSG(revMSG):
+            timerList.remove(i)
+    timerLock.release()
+
+    if timerList == []:
+        return
+
+    timer = threading.Timer(3,fun_timer)
+    timer.start()
 
 
 def help(cmd=''):

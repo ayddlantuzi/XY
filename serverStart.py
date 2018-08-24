@@ -1,5 +1,5 @@
 # encoding: utf-8
-import socket
+from socket import *
 from time import ctime
 from xinyou.saction import *
 
@@ -18,7 +18,10 @@ currentGame=['']
 
 BUFSIZ = 2048
 ADDR = (HOST, PORT)
-tcpSerSock = socket(AF_INET, SOCK_STREAM)
+
+
+
+tcpSerSock = socket(AF_INET,SOCK_STREAM)
 # tcpSerSock.setblocking(0)
 tcpSerSock.bind(ADDR)
 tcpSerSock.listen(5)
@@ -41,6 +44,9 @@ while True:
     # 命令检查
     if dataList == ['getinfo']:
         tcpCliSock.send(bytes(json.dumps(serverGameInfoList),encoding='utf-8'))
+    elif dataList == ['checkMSG']:
+        msg = checkMSG_Server()
+        tcpCliSock.send(bytes(json.dumps(msg), encoding='utf-8'))
     else:
         msg = command_ServerCheck(dataList,serverGameInfoList)
         print('msg:',msg) 

@@ -10,10 +10,19 @@ import time
 import subprocess
 import shutil
 import win32gui,win32api,win32con
+import threading
+import json
+
 
 gamedir = ''
 # 默认桌面目录
 desktop_dir = 'D:\\Desktop\\'
+
+
+timerState = False
+timerList = []
+timerMsg = []
+timerLock = threading.Lock()
 
 def runServiceLoader(path,xml):
     '''
@@ -185,7 +194,7 @@ def get_gamexmlANDport(path,xml):
 
 
 
-def check_xml_port_open(xmllist):
+def check_xml_port_open(xmllist,type = 'start'):
     '''
     检查房间xml的端口是否占用   xmllst中 相关占用端口移除，并返回消息
     :param xmllist:   [3,[ '疯狂跑得快新手场12601.xml' , '疯狂跑得快初级场12611.xml' , '疯狂跑得快顶级场12631.xml'],[ 12601 , 12611 , 12631]]
@@ -202,17 +211,26 @@ def check_xml_port_open(xmllist):
     n = xmllist[0]
     if xmllist[0] != 0:
         for port in xmllist[2][:]:
-            if portISopen(int(port)):
-                index = xmllist[2].index(port)
-                xmllist[1].pop(index)
-                xmllist[2].pop(index)
-                n -= 1
-                msg = port + '   端口被占用！'
-                error_msg.append(msg)
-                print(msg)
+            if type == 'start':
+                if portISopen(int(port)):
+                    index = xmllist[2].index(port)
+                    xmllist[1].pop(index)
+                    xmllist[2].pop(index)
+                    n -= 1
+                    msg = port + '   房间端口被占用！'
+                    error_msg.append(msg)
+            elif type == 'stop':
+                if not portISopen(int(port)):
+                    index = xmllist[2].index(port)
+                    xmllist[1].pop(index)
+                    xmllist[2].pop(index)
+                    n -= 1
+                    msg = port + '   房间端口未启用，无需关闭！'
+                    error_msg.append(msg)
+            else:
+                pass
 
         xmllist[0] = n
-
     print('check_xml_port_open  end')
     return xmllist,error_msg
 
@@ -274,7 +292,7 @@ def gameInfoFile(gamedir):
     :return:
     '''
     gameInfoList = []
-    if os.path.exists('dirinfo.ini'):
+    if not os.path.exists('dirinfo.ini'):
         file = open('dirinfo.ini','w')
         gameInfoList = getServerGameInfo(gamedir)
         json.dump(gameInfoList,file)
@@ -798,43 +816,32 @@ def stop_cmd_server(gamedir,currentGame,info,stopSEC):
     :param info:
     :return:
     '''
-
-
     # 检查 关闭 房间端口的合格     房间端口是否存在，房间端口是否开着
     if ',' in info:
-        room = info.split(',')
+        xml = info.split(',')
     else:
-        room = info
+        xml = info
 
     path = gamedir + '\\' + currentGame
 
     xml_list_getgamexml,error_msg_1 = get_gamexmlANDport(path,xml)
-    xml_list,return_msg = check_xml_port_open(xml_list_getgamexml)
+    xml_list,return_msg = check_xml_port_open(xml_list_getgamexml,'stop')
     return_msg.extend(error_msg_1)
+    msg_stopAction,stopSYC = stopFileCreate(path,xml_list,stopSEC)
+    return_msg.extend(msg_stopAction)
 
-    if xml_list[0][0] > 0:
-        for i in xml_list[0][1]:
-        return_msg.append(i + '  房间正在关闭中！')
+    if stopSYC:
+        return_msg.insert(0,'stopRoom')
+    else:
+        return_msg.insert(0,'print')
 
-        # 关闭操作
-        pass
 
+    print('stop_cmd_server  end:')
+    print(return_msg)
     return return_msg
 
 
-
-
-
-def stopCheck(dir,port):
-    '''
-    检查文件是否关闭
-    :param dir:
-    :param port:
-    :return:
-    '''
-    pass
-
-def stopFileCreate(dir,port,sec):
+def stopFileCreate(dir,info,stopSEC):
     '''
     创建  关闭房间的文件
 
@@ -842,15 +849,102 @@ def stopFileCreate(dir,port,sec):
 
 
     :param dir:  游戏目录
-    :param port: 关闭端口
+    :param port:  [3,[ '疯狂跑得快新手场12601.xml' , '疯狂跑得快初级场12611.xml' , '疯狂跑得快顶级场12631.xml'],[ 12601 , 12611 , 12631]]
     :param sec:  关闭的时间
     :return:
     '''
+    global timerState,timerList,timerLock
+    state = False
+    msg = []
+    for i in range(len(info[2])):
+        if os.path.exists('shut '+info[2][i]):
+            msg.append(info[1][i] + ' 已经在关闭过程中！')
+        else:
+            shutDefault = dir + '\\shut'
+            shutFile = dir + '\\shut ' + info[2][i]
+            try:
+                f = open(shutDefault,'w+')
+                f.write(str(stopSEC))
+                f.close()
+                os.rename(shutDefault,shutFile)
+                state = True
+            except Exception as e:
+                msg.append(info[1][i])
+                msg.append(e)
 
-    pass
+            # 全局list操作
+            timerLock.acquire()
+            timerState = False
+            timerList.append([info[1][i],shutFile+' result',stopSEC])
+            timerLock.release()
+
+    # 启动定时器
+    if state:
+        fun_timer()
+
+    return msg,state
+
+
+def fun_timer():
+    '''
+    定时器
+    :return:
+    '''
+    global timerState,timerList,timer,timerLock
+    if timerState:
+        timer.cancel()
+        return
+
+    print('timerList',timerList)
+    if timerList == []:
+        timerLock.acquire()
+        timerState = True
+        timerLock.release()
+        return
+    for i in timerList[:]:
+        removeState = False
+        if os.path.exists(i[1]):
+            timerMsg.append(i[0] + '   房间已关闭！')
+            removeState = True
+        else:
+            i[2] -= 3
+            if i[2] < -12:
+                timerMsg.append(i[0] + '  房间关闭超时，请登录服务器检查！')
+                removeState = True
+
+        if removeState:
+            timerLock.acquire()
+            timerList.remove(i)
+            timerLock.release()
+
+    timer = threading.Timer(3,fun_timer)
+    timer.start()
+
+
+def checkMSG_Server():
+    '''
+    检查服务器 是否有 定时器检查的  关闭房间的消息
+    :return:['None'] 没有定时器  ['Wait'] 有消息在等待
+    '''
+    global timerLock,timerMsg,timerState
+    msg = []
+    timerLock.acquire()
+    if timerMsg == []:
+        print('timerState',timerState)
+        if timerState:
+            msg = ['None']
+        else:
+            msg = ['Wait']
+    else:
+        msg = timerMsg
+        timerMsg = []
+    timerLock.release()
+    return msg
+
 
 
 def getName_gateway_match():
+
     pass
 
 
