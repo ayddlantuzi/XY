@@ -56,13 +56,14 @@ def getClientGroup(serverIpPortList):
     '''
     获得所有服务器连接
     :param serverIpPortList:[[name1,(ip,port)],[]]
-    :return: 返回列表
+    :return: 返回列表[[client1,client1备份][client2,client2备份]...]
     '''
     clientList = []
 
     for i in serverIpPortList:
         gsc = gsClient(i[0],i[1])
-        clientList.append(gsc)
+        gscc = gsClient(i[0],i[1])
+        clientList.append([gsc,gscc])
 
     return clientList
 
@@ -71,12 +72,13 @@ def client_getServerGameInfo(clientgroup):
     '''
     连接所有clientgroup中的服务器，获取基础信息
     :param clientgroup: 所有连接
-    :return: 返回 收集的服务器初始化消息 [[client对象，消息，消息，消息],[client对象，消息，消息，消息]]
+    :return: 返回 收集的服务器初始化消息 [[client对象,client对象[消息，消息，消息]],[client对象，client对象[消息，消息，消息]]]
     '''
     unconnected_num = len(clientgroup)
     allGameInfo = []
     while unconnected_num > 0:
-        for client in clientgroup[:]:
+        for clientg in clientgroup[:]:
+            client = clientg[0]
             if client.connect():
                 # 发送消息获取 服务器初始消息
                 client.send(json.dumps(['getinfo']))
@@ -87,18 +89,19 @@ def client_getServerGameInfo(clientgroup):
                 print(info)
                 if type(info) == list:
                     info.insert(0,client)
+                    info.insert(1,clientg[1])
                     allGameInfo.append(info)
                 else:
                     print(client.GSname+'接收数据类型非List  请检查~')
                 print(client.GSname+'  连接成功√ √ √')
                 client.close()
-                clientgroup.remove(client)
+                clientgroup.remove(clientg)
             else:
                 print(client.GSname+'  连接失败× × ×   查看服务器端是否开启！')
         # 判断是否有未连接 成功的client
         unconnected_num = len(clientgroup)
         if unconnected_num > 0:
-            data = input('未连接的Server 是否尝试重连！  yes 尝试重连 no/任意字符 继续操作')
+            data = input('未连接的Server 是否尝试重连！  yes 尝试重连，任意字符 继续操作')
             if data.strip().lower() == 'yes':
                 continue
             else:

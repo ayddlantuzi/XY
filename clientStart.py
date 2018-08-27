@@ -4,7 +4,7 @@ from xinyou.caction import *
 from xinyou.clientActor import *
 
 # 当前管理的游戏目录 [目录名称，client对象]
-currentGame = ['empty','']
+currentGame = ['empty','','']
 currentMsg = ''
 # 启动游戏后 所有server端的消息集合
 allGameInfo = []
@@ -25,7 +25,7 @@ allGameInfo = client_getServerGameInfo(clientList)
 
 while True:
     returnMSG = []
-    data = input(currentGame[1]+':>')
+    data = input(currentGame[2]+':>')
     cmd = data.strip()
     # 对输入命令分析判断
     checkResult = command_simpleCheck(cmd,allGameInfo,currentGame)
@@ -55,9 +55,10 @@ while True:
     elif returnMSG[0] =='update':
         transfer_File(currentGame,returnMSG[1],'update')
     elif returnMSG[0] == 'compare':
-        compare_cmd_client(currentGame[1],returnMSG[1])
+        compare_cmd_client(currentGame[2],returnMSG[1])
     elif returnMSG[0] == 'stopRoom':
-        stopSyc(currentGame)
+        stopRoomMSG_pre(returnMSG)
+        stopSyc(currentGame[1])
     else:
         pass
 

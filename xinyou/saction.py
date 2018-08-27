@@ -156,7 +156,7 @@ def get_gamexmlANDport(path,xml):
                     n += 1
                     status = False
             if status:
-                msg = '端口   '+ port + '   未匹配到对应的房间名称!'
+                msg = port + '   未匹配到对应的房间名称!'
                 error_msg.append(msg)
 
 # 信息提示需要修改？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
@@ -183,7 +183,7 @@ def get_gamexmlANDport(path,xml):
                 status = False
                 break
         if status:
-            error_msg.append('端口   '+ xml + '   未匹配到对应的房间名称!')
+            error_msg.append(xml + '   未匹配到对应的房间名称!')
 
     returnList = [n,temp_file,temp_port]
 
@@ -827,14 +827,19 @@ def stop_cmd_server(gamedir,currentGame,info,stopSEC):
     xml_list_getgamexml,error_msg_1 = get_gamexmlANDport(path,xml)
     xml_list,return_msg = check_xml_port_open(xml_list_getgamexml,'stop')
     return_msg.extend(error_msg_1)
+
     msg_stopAction,stopSYC = stopFileCreate(path,xml_list,stopSEC)
     return_msg.extend(msg_stopAction)
 
-    if stopSYC:
-        return_msg.insert(0,'stopRoom')
-    else:
-        return_msg.insert(0,'print')
+    return_msg_str = msgList_2_msgStr(return_msg)
 
+
+    return_msg = []
+    if stopSYC:
+        return_msg.append('stopRoom')
+    else:
+        return_msg.append('print')
+    return_msg.append(return_msg_str)
 
     print('stop_cmd_server  end:')
     print(return_msg)
@@ -904,7 +909,7 @@ def fun_timer():
     for i in timerList[:]:
         removeState = False
         if os.path.exists(i[1]):
-            timerMsg.append(i[0] + '   房间已关闭！')
+            timerMsg.append(i[0] + '   房间已关闭!')
             removeState = True
         else:
             i[2] -= 3

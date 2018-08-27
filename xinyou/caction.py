@@ -70,7 +70,7 @@ def printGameDir(gameDirList):
     :return:
     '''
     for i in gameDirList:
-        for id in i[1]:
+        for id in i[2]:
             print(id)
 
 
@@ -84,12 +84,14 @@ def idSearching(id,gameInfo,currentGame):
     status = False
     id = id.upper()
     for i in gameInfo:
-        for m in i[1]:
+        for m in i[2]:
             if id in m.upper():
-                if len(currentGame) == 2:
+                if len(currentGame) == 3:
+                    currentGame.pop()
                     currentGame.pop()
                     currentGame.pop()
                 currentGame.append(i[0])
+                currentGame.append(i[1])
                 currentGame.append(m)
                 status = True
                 break
@@ -145,7 +147,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             help(cmdList[1])
             return False
 
-        if currentGame[1] == '':
+        if currentGame[2] == '':
             print('请先选择游戏目录:')
             printGameDir(gameInfo)
             return False
@@ -159,17 +161,17 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
         elif cmdList[0] == 'start':
             return start_check(cmdList)
         elif cmdList[0] == 'stop':
-            return stop_check(currentGame[1],cmdList)
+            return stop_check(currentGame[2],cmdList)
         elif cmdList[0] == 'get':
-            return get_check(currentGame[1],desktop_dir,cmdList)
+            return get_check(currentGame[2],desktop_dir,cmdList)
         elif cmdList[0] == 'put':
             # 判断桌面目录是否存在  上传的文件是否存在
-            return put_check(currentGame[1],cmdList[1])
+            return put_check(currentGame[2],cmdList[1])
         elif cmdList[0] == 'update':
             # 判断上传的文件是否存在
-            return update_check(currentGame[1],cmdList[1])
+            return update_check(currentGame[2],cmdList[1])
         elif cmdList[0] == 'show':
-            return show_check(currentGame[1],cmdList)
+            return show_check(currentGame[2],cmdList)
         elif cmdList[0] == 'back':
             if not cmdList[1] in ['ini','exe','dll']:
                 print('back 命令错误help back 查询命令的使用方法！')
@@ -186,6 +188,8 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             print('客户端 命令无法识别！')
             print(cmdList)
     return True
+
+
 
 def start_check(cmdList):
     return cmdList
@@ -323,7 +327,7 @@ def transfer_File(currentGame,fileList_Info,mode='put'):
     :return: 执行在client端  消息直接打印
     '''
     host = currentGame[0].host
-    gamePath = currentGame[1]
+    gamePath = currentGame[2]
     transport  = paramiko.Transport(host,22)
     transport.connect(username='xinyou',password='EVxBhaTCWxUt')
 
@@ -457,7 +461,7 @@ def sendMSG(msg,currentGame):
     :return: 反馈消息
     '''
     currentGame[0].connect()
-    msg.insert(1,currentGame[1])
+    msg.insert(1,currentGame[2])
     msgstr = json.dumps(msg)
     currentGame[0].send(msgstr)
     revstr = currentGame[0].receive()
@@ -481,12 +485,22 @@ def pringMSG(msg):
     '''
     pass
 
+def stopRoomMSG_pre(returnMSG):
+    '''
+    stop命令 执行后的   当前的消息返回
+    :param returnMSG:
+    :return:
+    '''
+    lenMSG = len(returnMSG)
+    if lenMSG>1:
+        for i in range(lenMSG-1):
+            print(returnMSG[i+1])
 
 def stopSyc(client):
     global timerList,timerLock
 
     timerLock.acquire()
-    timerList.append(client[0])
+    timerList.append(client)
     timerLock.release()
     fun_timer()
 
