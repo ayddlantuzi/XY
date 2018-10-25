@@ -14,6 +14,7 @@ import threading
 import json
 
 
+game_match_serviceDict = {}
 gamedir = ''
 # 默认桌面目录
 desktop_dir = 'D:\\Desktop\\'
@@ -69,6 +70,8 @@ def runServiceLoader(path,xml):
     print('runServiceLoader  return:',end='')
     print(all_msg_str)
     return ['print',all_msg_str]
+
+
 
 
 def format_RunserviceLoader_Log(msgList):
@@ -258,70 +261,121 @@ def getServerGameInfo_xml_check(path):
 
 
 
-def getServerGameInfo(path):
+def getServerGameInfo(game_match_serviceDict):
     '''
     返回游戏目录下  所有的游戏目录 run目录 xml文件
     :param path:  游戏根目录
-    :return:
-        firstList  根目录下所有的文件和目录         所有 游戏目录
-        secondList 根目录所有包括run子目录的 目录   筛选过的含有run房间目录的 游戏目录
-        thirdList  所有子目录run 下面的.xml文件 []
+    :return:原
+        [[包含房间run文件夹的 游戏目录],[对应游戏目录 下的房间xml]]
 
-        return  [[包含房间run文件夹的 游戏目录],[对应游戏目录 下的房间xml]]
+     return  改
+      {'gamedir':[[包含房间run文件夹的 游戏目录],[对应游戏目录 下的房间xml]] , 'matchdir':['DDZ-Flow-match','DDZ-Monthly-match'] ， 'servicedir':['redserver','rankserver']}
+
+     return 改2
+      {'gamedir':[包含房间run文件夹的 游戏目录] , 'matchdir':['DDZ-Flow-match','DDZ-Monthly-match'] ， 'servicedir':['redserver','rankserver']}
+
+
     '''
-    firstList = os.listdir(path)
+    gameInfo = {}
+    if 'game' in game_match_serviceDict:
+        path = game_match_serviceDict.get('game')
+        firstList = os.listdir(path)
+        secondList = []
+        # thirdList = []
+        for i in firstList:
+            a = path + i
+            xmlPath = a+'\\run'
+            if os.path.isdir(a) and os.path.isdir(xmlPath):
+                xmlresult = getServerGameInfo_xml_check(xmlPath)
+                if xmlresult:
+                    secondList.append(i)
+                    # thirdList.append(xmlresult)
+        # gameInfo.update({'game':[secondList,thirdList]})
+        gameInfo.update({'game':secondList})
 
-    secondList = []
-    thirdList = []
-    for i in firstList:
-        a = path + i
-        xmlPath = a+'\\run'
-        if os.path.isdir(a) and os.path.isdir(xmlPath):
-            xmlresult = getServerGameInfo_xml_check(xmlPath)
-            if xmlresult:
-                secondList.append(i)
-                thirdList.append(xmlresult)
+    if 'match' in game_match_serviceDict:
+        path = game_match_serviceDict.get('match')
+        matchList = os.listdir(path)
+        mfirstList = []
+        for i in matchList:
+            a = path + i
+            gsPath = a + '\\GS'
+            msPath = a + '\\MS'
+            matchexePath = msPath + '\\matchserver_x64_r.exe'
+            if os.path.isdir(gsPath) and os.path.isdir(msPath) and os.path.exists(matchexePath):
+                mfirstList.append(i)
+        gameInfo.update({'match':mfirstList})
 
-    return [secondList,thirdList]
+    if 'service' in game_match_serviceDict:
+        path = game_match_serviceDict.get('service')
+        serviceList = os.listdir(path)
+        sfirstList = []
+        for i in serviceList:
+            a = path + i
+            serviceExePath = a + '\\matchserver_x64_r.exe'
+            if os.path.exists(serviceExePath):
+                sfirstList.append(i)
+        gameInfo.update({'service':sfirstList})
+    print(gameInfo)
+    return gameInfo
+
+    # return [secondList,thirdList]
 
 
-def gameInfoFile(gamedir):
+def gameInfoFile(game_match_serviceDict):
     '''
     启动时 将ServerGameInfo 保存到文件中， Client连接时候 读取发送，节省遍历目录的IO时间
-    :param gamedir:
+    :param game_match_serviceDict:
     :return:
     '''
-    gameInfoList = []
+    gameInfoDict = []
     if not os.path.exists('dirinfo.ini'):
         file = open('dirinfo.ini','w')
-        gameInfoList = getServerGameInfo(gamedir)
-        json.dump(gameInfoList,file)
+        gameInfoDict = getServerGameInfo(game_match_serviceDict)
+        json.dump(gameInfoDict,file)
     else:
         file = open('dirinfo.ini','r')
-        gameInfoList = json.load(file)
+        gameInfoDict = json.load(file)
 
-    return gameInfoList
+    return gameInfoDict
 
 
 def getSconfig():
     '''
     读取服务器端配置文件 Sconfig.ini
+    原  来：return gamedir,port
+    修改后：return game_match_serviceDict,port
+           game_match_serviceDict    键 game match service 至少包含一个
+
     :return: 返回  (游戏目录,port)
     '''
-    global gamedir
+    section = 'Server'
+    port = 0
+    game_match_serviceDict = {}
+
     configINI = configparser.SafeConfigParser()
     #configINI.read('..\Sconfig.ini')
     try:
         configINI.read('Sconfig.ini')
-        gamedir = configINI.get('Server','gamedir')
-        port = int(configINI.get('Server','port'))
-    except Exception as e:
-        print('请在config.ini配置 Serviceoader目录地址！格式如下')
-        print('[Server]')
-        print('gamedir = ')
-        print('port = ')
+        soption = configINI.options(section)
 
-    return gamedir,port
+        for s in soption:
+            game_match_serviceDict.update({s:configINI.get(section,s)})
+    except Exception as e:
+        print('处理Sconfig.ini错误：')
+        print(e)
+
+    if 'port' in game_match_serviceDict:
+        port = int (game_match_serviceDict.get('port'))
+        del game_match_serviceDict['port']
+        if len(game_match_serviceDict) == 0:
+            print('Sconfig.ini 未定义任何目录参数')
+            return
+    else:
+        print('Sconfig.ini 未定义port参数')
+        return
+
+    return game_match_serviceDict,port
 
 
 #
@@ -336,15 +390,17 @@ def getSconfig():
 #     return msg
 
 
-def command_ServerCheck(cmdList,serverGameInfo):
+def command_ServerCheck(cmdList,serverGameInfo,game_match_serviceDict):
     '''
 
     :param cmdList:
     :param currentGame:
     :return:
     '''
-    global  gamedir
+    gamedir = game_match_serviceDict[cmdList[2]]
+    mstype = ['match','service']
     currentGame = cmdList[1]
+    cmdtype = cmdList[2]
     # 检测游戏目录是否匹配
     if currentGame in serverGameInfo[0]:
         pass
@@ -353,40 +409,91 @@ def command_ServerCheck(cmdList,serverGameInfo):
         return msg
 
 
+
     if cmdList[0] == 'start':
-        if ',' in cmdList[2]:
-            room = cmdList[2].split(',')
+        if cmdtype == 'game':
+            if ',' in cmdList[3]:
+                room = cmdList[3].split(',')
+            else:
+                room = cmdList[3]
+            msg = runServiceLoader(gamedir+'\\'+currentGame,room)
+        elif cmdtype in mstype:
+            msg = runMatchService(cmdList,game_match_serviceDict)
         else:
-            room = cmdList[2]
-        msg = runServiceLoader(gamedir+'\\'+currentGame,room)
+            msg = ['print','game、match、service类型输入错误！']
 
     elif cmdList[0] == 'stop':
-        msg = stop_cmd_server(gamedir,currentGame,cmdList[2],cmdList[3])
+        if cmdtype == 'game':
+            msg = stop_cmd_server(gamedir,currentGame,cmdList[2],cmdList[3])
+        elif cmdtype in mstype:
+            msg = stopMatchService(cmdList,game_match_serviceDict)
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
 
     elif cmdList[0] == 'show':
-        msg = show_cmd_server(gamedir,currentGame,cmdList[2])
+        if cmdtype =='game':
+            msg = show_cmd_server(gamedir,currentGame,cmdList[2])
+        elif cmdtype in mstype:
+            msg = showMatchServer(cmdList,game_match_serviceDict)
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
 
     elif cmdList[0] == 'get':
-        # get ini 下载当前游戏 目录下的所有ini到桌面
-        # get *** 下载明确的文件名
-        # 1、检查目录中的  是否存在ini文件，或者具体文件名称是否存在
-        # 2、
-        msg = get_filter_File(currentGame,cmdList)
+        if cmdtype =='game':
+            # get ini 下载当前游戏 目录下的所有ini到桌面
+            # get *** 下载明确的文件名
+            # 1、检查目录中的  是否存在ini文件，或者具体文件名称是否存在
+            # 2、
+            msg = get_filter_File(currentGame,cmdList)
+        elif cmdtype in mstype:
+            # get file  get rt
+            msg = get_match_File(cmdList,game_match_serviceDict)
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
+
 
     elif cmdList[0] == 'put':
-        msg = put_check_server(gamedir,currentGame,cmdList)
+        if cmdtype =='game':
+            msg = put_check_server(gamedir,currentGame,cmdList)
+        elif cmdtype in mstype:
+            msg = put_match_File(cmdList,game_match_serviceDict)
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
+
 
     elif cmdList[0] == 'update':
         # update exe 升级servicesLoader
         # update dll 升级游戏dll
         # 升级前 建立备份目录  并备份被升级的文件
-        msg = update_cmd_server(gamedir,currentGame,cmdList)
+        if cmdtype == 'game':
+            msg = update_cmd_server(gamedir,currentGame,cmdList)
+        elif cmdtype in mstype:
+            msg =
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
+
+
+
 
     elif cmdList[0] =='back':
-        msg = back_cmd_server(gamedir,currentGame,cmdList[2])
+        if cmdtype == 'game':
+            msg = back_cmd_server(gamedir,currentGame,cmdList[2])
+        elif cmdtype in mstype:
+            msg =
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
+
+
 
     elif cmdList[0] == 'compare':
-        msg =compare_cmd_server(gamedir,currentGame,cmdList[2])
+        if cmdtype == 'game':
+            msg =compare_cmd_server(gamedir,currentGame,cmdList[2])
+        elif cmdtype in mstype:
+            msg =
+        else:
+            msg = ['print', 'game、match、service类型输入错误！']
+
+
 
     return msg
 
@@ -527,6 +634,88 @@ def update_cmd_server(gamedir,currentGame,cmdList):
     return msg
 
 
+def get_match_File(cmdList,game_match_serviceDict):
+    '''
+    返回 下载的文件目录，消息
+    :param cmdList:
+    :param game_match_serviceDict:
+    :return:['print',消息]  ['get',[source,target],[source1,target1]....]
+    '''
+    gamedir  = game_match_serviceDict[cmdList[]]
+
+    fileList = ['get']
+    sourceList = []
+    targetList = []
+
+    if cmdList[2] == 'match':
+        if cmdList[4] in ['ini','gateway.ini','gateway','config.ini','config']:
+            if cmdList[4] in ['ini','config.ini','config']:
+                sourceServer1 = gamedir + cmdList[1] + '\\MS\\config.ini'
+                sourceList.append(sourceServer1)
+                targetClient1 = cmdList[3] + cmdList[1] + '\\config.ini'
+                targetList.append(targetClient1)
+                if cmdList[4] == 'config.ini':
+                    if os.path.exists(sourceServer1):
+                        fileList.append([sourceServer1,targetClient1])
+
+            sourceServer2 = gamedir + cmdList[1] + '\\MS\\gateway.ini'
+            sourceServer3 = gamedir + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
+            sourceServer4 = gamedir + cmdList[1] + '\\MS\\Gate2\\gateway.ini'
+            sourceList.append(sourceServer2)
+            sourceList.append(sourceServer3)
+            sourceList.append(sourceServer4)
+            targetClient2 = cmdList[3] + cmdList[1] + '\\gateway.ini'
+            targetClient3 = cmdList[3] + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
+            targetClient4 = cmdList[3] + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
+            targetList.append(targetClient2)
+            targetList.append(targetClient3)
+            targetList.append(targetClient4)
+
+            for i in range(len(sourceList)):
+                if os.path.exists(sourceList[i]):
+                    fileList.append([sourceList[i],targetList[i]])
+
+            if len(fileList) > 1:
+                return fileList
+            else:
+                msg = ''
+                for i in sourceList:
+                    msg += i +' '
+                return ['print', msg + '下载文件未找到！']
+
+        elif cmdList[4] in ['rt','server.rt']:
+            sourceServer1 = gamedir + cmdList[1]+'\\MS\\server.rt'
+            targetClient1 = cmdList[3] + cmdList[1] + '\\server.rt'
+            if os.path.exists(sourceServer1):
+                fileList.append([sourceServer1,targetClient1])
+                return fileList
+            else:
+                return ['print',sourceServer1 + '  下载文件未找到！']
+
+        else:
+            sourceServer1 = gamedir + cmdList[1] + '\\MS\\' + cmdList[4]
+            if os.path.exists(sourceServer1):
+                targetClient1 = cmdList[3] + cmdList[1] + '\\MS\\' + cmdList[4]
+                fileList.append([sourceServer1,targetClient1])
+                return fileList
+            else:
+                return ['print',sourceServer1 + '  下载文件未找到！']
+
+    elif cmdList[2] == 'service':
+        if cmdList[4] in ['config','config.ini']:
+            sourceServer1 = gamedir + cmdList[1] + '\\config.ini'
+            targetClient1 = cmdList[3] + cmdList[1] + '\\config.ini'
+        else:
+            sourceServer1 = gamedir + cmdList[1] + '\\' + cmdList[4]
+            targetClient1 = cmdList[3] + cmdList[1] + '\\' + cmdList[4]
+
+        if os.path.exists(sourceServer1):
+            fileList.append([sourceServer1,targetClient1])
+            return fileList
+        else:
+            return ['print', sourceServer1 + ' 下载文件未找到']
+
+
 
 
 def get_filter_File(currentGame,getMSG):
@@ -567,7 +756,20 @@ def get_filter_File(currentGame,getMSG):
     print(msg)
     return msg
 
+def put_match_File(cmdList,game_match_serviceDict):
+    '''
+    put rt confg gateway dll exe
+    :param cmdList:
+    :param game_match_serviceDict:
+    :return:
+    '''
+    desktop_dir =cmdList[3]
+    filelist =cmdList[4]
 
+    msg = []
+
+
+    pass
 
 
 def put_check_server(gamedir,currentGame,cmdList):
@@ -578,8 +780,8 @@ def put_check_server(gamedir,currentGame,cmdList):
     :param get_fuzzy:
     :return:  返回msg  msg1     msg print备份消息     msg1 put消息
     '''
-    desktop_dir =cmdList[2]
-    filelist =cmdList[3]
+    desktop_dir =cmdList[3]
+    filelist =cmdList[4]
 
     msg=[]
     print('gamedir:',end='')
@@ -854,7 +1056,7 @@ def stopFileCreate(dir,info,stopSEC):
 
 
     :param dir:  游戏目录
-    :param port:  [3,[ '疯狂跑得快新手场12601.xml' , '疯狂跑得快初级场12611.xml' , '疯狂跑得快顶级场12631.xml'],[ 12601 , 12611 , 12631]]
+    :param info:  [3,[ '疯狂跑得快新手场12601.xml' , '疯狂跑得快初级场12611.xml' , '疯狂跑得快顶级场12631.xml'],[ 12601 , 12611 , 12631]]
     :param sec:  关闭的时间
     :return:
     '''
@@ -895,7 +1097,7 @@ def fun_timer():
     定时器
     :return:
     '''
-    global timerState,timerList,timer,timerLock
+    global timerState,timerList,timer,timerLock,timerMsg
     if timerState:
         timer.cancel()
         return
@@ -946,11 +1148,6 @@ def checkMSG_Server():
     timerLock.release()
     return msg
 
-
-
-def getName_gateway_match():
-
-    pass
 
 
 
@@ -1008,6 +1205,149 @@ def closeWindowAction(window,type='stop'):
     # win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
 
 
+# --------------------------------------------------------------启动 停止 显示match Service-----------------------------------------------------
+def runMatchService(cmdList,game_match_serviceDict,status='check'):
+    # 判断是否已经开启
+    isopen,infoList = checkMatchServer(cmdList,game_match_serviceDict)
+    startNum = 0
+    msgList = []
+    if isopen == False:
+        # 启动exe
+        for i in infoList:
+            a = subprocess.run(i,shell=True)
+            startNum += 1
+        msgList.append('print')
+        msgList.append(startNum + '个服务已经启动！')
+        return msgList
+    else:
+        infoList.insert(0,'print')
+        return infoList
+
+def showMatchServer(cmdList,game_match_serviceDict):
+    if cmdList[3] == 'match':
+        return checkMatchServer(cmdList,game_match_serviceDict,statue='show')
+    else:
+        return ['print','show '+ cmdList[3] +'命令无法识别！ 请参考 help show']
+
+
+def checkMatchServer(cmdList,game_match_serviceDict,statue='check'):
+    '''
+    判断match 或者service 是否启用
+    :param cmdList: status   True  检查已经启动   False 检查没有启动
+    :return:
+    '''
+
+    msgList = []
+    nameList,infoList = getNameMatchServer(cmdList,game_match_serviceDict)
+    # 列出所有的顶级窗口
+    if nameList == True:
+        return True,infoList
+    isopen = False
+    hWndList = []
+    win32gui.EnumWindows(lambda hWnd, param: param.append(hWnd), hWndList)
+    # 检查窗口名称是否存在
+    for h in hWndList:
+        num = len(nameList)
+        if num <= 0 :
+            break
+        for i in nameList[:]:
+            if i in win32gui.GetWindowText(h):
+                msgList.append(i+'已经启动！')
+                nameList.remove(i)
+                isopen = True
+    if statue == 'check' and isopen:
+        return True,msgList
+    elif statue == 'show':
+        for i in nameList:
+            msgList.append(i+'  未启动！')
+            msgList.insert(0,'print')
+        return msgList
+    else:
+        return False,infoList
+
+
+
+
+def getNameMatchServer(cmdList,game_match_serviceDict):
+    '''
+    获取 match service 窗口名称列表
+    :param cmdList:
+    :param game_match_serviceDict:
+    :return:  nameList,msgList
+    1   nameList['***','***']   conf_dir['****\\config.ini', ...]
+    2   name[True]             msgList['***','***']
+    '''
+    # 窗体名称目录
+    nameList = []
+    msgList = []
+    conf_dir = []
+    exeList = []
+    # 拿到需要config.ini的路径
+    if cmdList[3] == 'match':
+        conf_match =  game_match_serviceDict['match'] + cmdList[1] +'\\MS\\config.ini'
+        conf_gateway = game_match_serviceDict['match'] + cmdList[1] +'\\MS\\gateway.ini'
+        conf_gateway1 = game_match_serviceDict['match'] + cmdList[1] +'\\MS\\Gate1\\gateway.ini'
+        conf_gateway2 = game_match_serviceDict['match'] + cmdList[1] +'\\MS\\Gate2\\gateway.ini'
+
+        exe_match = game_match_serviceDict['match'] + cmdList[1] +'\\MS\\matchserver_x64_r.exe'
+        exe_gateway = game_match_serviceDict['match'] + cmdList[1] +'\\MS\\gateway_x64_release.exe'
+        exe_gateway1 = game_match_serviceDict['match'] + cmdList[1] + '\\MS\\Gate1\\gateway_x64_release.exe'
+        exe_gateway2 = game_match_serviceDict['match'] + cmdList[1] + '\\MS\\Gate2\\gateway_x64_release.exe'
+        if os.path.exists(conf_match) and os.path.exists(exe_match):
+            conf_dir.append(conf_match)
+            exeList.append(exe_match)
+        else:
+            msgList.append('未在'+cmdList[1]+'中找到config.ini或exe 文件！')
+            return True,msgList
+        # gateway config.ini文件检查
+        if os.path.exists(conf_gateway) and os.path.exists(exe_gateway):
+            conf_dir.append(conf_gateway)
+            exeList.append(exe_gateway)
+        elif os.path.exists(conf_gateway1) and os.path.exists(conf_gateway2) and os.path.exists(exe_gateway1) and os.path.exists(exe_gateway2):
+            conf_dir.append(conf_gateway1)
+            conf_dir.append(conf_gateway2)
+            exeList.append(exe_gateway1)
+            exeList.append(exe_gateway2)
+        else:
+            msgList.append('未在'+cmdList[1]+'的Gate1和Gate2文件夹中 找到 config.ini或exe文件！')
+            return True,msgList
+
+    elif cmdList[3] == 'service':
+        conf_service = game_match_serviceDict['service'] + cmdList[1] +'\\config.ini'
+        if os.path.exists(conf_service):
+            conf_dir.append(conf_service)
+        else:
+            msgList.append('未找到'+ cmdList[1]+'的 config.ini文件！')
+            return True,msgList
+    else:
+        msgList.append('cmdtype错误 非match或service 无法继续,请检查程序！')
+        return True,msgList
+
+    # 从config.ini中获取application name 窗口模糊名称
+    for config in conf_dir:
+        cf = configparser.SafeConfigParser()
+        try:
+            cf.read(config)
+            nameList.append(cf.get('Application','name'))
+        except Exception as e:
+            msgList.append(e)
+            return True,msgList
+    return nameList,exeList
+
+
+def stopMatchService(cmdList,game_match_serviceDict):
+    # 判断是否已经开启
+    isopen,infoList = getNameMatchServer(cmdList,game_match_serviceDict)
+    msgList = []
+    if isopen == True:
+        msgList = infoList
+    else:
+        msgList = stopMatch(isopen)
+    msgList.insert(0,'print')
+    return msgList
+# --------------------------------------------------------------启动 停止match Service end-----------------------------------------------------
+
+
 
 def stopMatch(nameList_gateway_match):
     '''
@@ -1022,7 +1362,7 @@ def stopMatch(nameList_gateway_match):
 
     # match
     matchName = nameList_gateway_match.pop()
-    gateway
+    # gateway
     numGateWay = len(nameList_gateway_match)
     msg = []
     msgsuccess = []
@@ -1054,15 +1394,15 @@ def stopMatch(nameList_gateway_match):
                 count += 1
 
     if breakTab > 2:
-        time.sleep(0.5)
+        time.sleep(0.1)
         closeWindowAction(ophWndList[0])
         msgsuccess.append(matchName + ' 关闭成功！')
 
     else:
-        msg.append(matchName+' 未找到！')
+        msg.append('未找到可关闭的' + matchName)
 
     for gateway in nameList_gateway_match:
-        msg.append(gateway+ ' 未找到！')
+        msg.append( '未找到可关闭的' + gateway)
 
 
     # 启动 定时器 做最后的关闭   ？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？   待修改

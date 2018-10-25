@@ -14,6 +14,7 @@ global cmdaction,desktop_dir
 
 cmdaction = ['start','stop','update','get','put','show','back','compare','mode']
 desktop_dir = ''
+cmdtype = 'game'
 svnServiceLoader_dir = ''
 dlls_dir = ''
 timerList = []
@@ -63,35 +64,46 @@ def getServerIpPort():
 
 
 # 待测试~~~~~~~~~~~~~~~~~
-def printGameDir(gameDirList):
+def printGameDir(gameDirList,cmdtype):
     '''
     打印 所有游戏目录
     :param gameDirList:
     :return:
     '''
-    for i in gameDirList:
-        for id in i[2]:
-            print(id)
+    if cmdtype[0] in gameDirList:
+        for i in gameDirList[cmdtype[0]]:
+            for id in i[0]:
+                print(id)
+    else:
+        print('消息列表中没有 ',cmdtype[0])
 
 
-def idSearching(id,gameInfo,currentGame):
+def idSearching(id,gameInfo,currentGame,cmdtype,clientDict):
     '''
     检索输入的 单个字符串 是否在 game目录上
     :param id: 输入的  命令
     :param gameInfo: 游戏Server info
     :return:   currentGame 重新赋值   True 匹配到ID  False 未匹配到
     '''
+
+    if cmdtype[0] in gameInfo:
+        info = gameInfo[cmdtype[0]]
+    else:
+        print('isSearching 未查找到',cmdtype[0])
+
+
     status = False
     id = id.upper()
-    for i in gameInfo:
-        for m in i[2]:
+    for i in info:
+        for m in i[0]:
             if id in m.upper():
                 if len(currentGame) == 3:
                     currentGame.pop()
                     currentGame.pop()
                     currentGame.pop()
-                currentGame.append(i[0])
-                currentGame.append(i[1])
+                clientGroup = clientDict[i[1]]
+                currentGame.append(clientGroup[0])
+                currentGame.append(clientGroup[1])
                 currentGame.append(m)
                 status = True
                 break
@@ -101,13 +113,21 @@ def idSearching(id,gameInfo,currentGame):
     return status
 
 
-def command_simpleCheck(cmd,gameInfo,currentGame):
+def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
+    '''
+    命令处理
+    :param cmd:
+    :param gameInfo:
+    :param currentGame:
+    :param cmdtype:
+    :return:
+    '''
     global cmdaction,desktop_dir
 
     if cmd =='':
         return False
 
-    if gameInfo == []:
+    if gameInfo == {}:
         print('没有可连接的服务器！')
         return 1
 
@@ -119,7 +139,11 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
     # 单命令
     if len(cmdList) == 1:
         if cmdList[0] =='id':
-            printGameDir(gameInfo)
+            printGameDir(gameInfo,cmdtype)
+            return False
+        elif cmdList[0] in ['game','match','service']:
+            cmdtype.pop()
+            cmdtype.append(cmdList[0])
             return False
         elif cmdList[0] =='help':
             help()
@@ -131,7 +155,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             return 1
         else:
             # 检查输入的游戏id  是否可以匹配到
-            if not idSearching(cmdList[0],gameInfo,currentGame):
+            if not idSearching(cmdList[0],gameInfo,currentGame,cmdtype,clientDict):
                 print(id,' 匹配不到游戏目录，请重新输入！  id 命令查看游戏目录')
             return False
 
@@ -148,8 +172,8 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             return False
 
         if currentGame[2] == '':
-            print('请先选择游戏目录:')
-            printGameDir(gameInfo)
+            print('请先选择目录:')
+            printGameDir(gameInfo,cmdtype)
             return False
 
         if not cmdList[0] in cmdaction:
@@ -159,9 +183,9 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
             help(cmdList[1])
             return False
         elif cmdList[0] == 'start':
-            return start_check(cmdList)
+            return start_check(cmdList,cmdtype)
         elif cmdList[0] == 'stop':
-            return stop_check(currentGame[2],cmdList)
+            return stop_check(currentGame[2],cmdList,cmdtype)
         elif cmdList[0] == 'get':
             return get_check(currentGame[2],desktop_dir,cmdList)
         elif cmdList[0] == 'put':
@@ -191,8 +215,53 @@ def command_simpleCheck(cmd,gameInfo,currentGame):
 
 
 
-def start_check(cmdList):
+def start_check(cmdList,cmdtype):
+    '''
+    start 命令  client端 合理性检查
+    :param cmdList:
+    :param cmdtype: game  match  service
+    :return:
+    '''
+    if cmdtype == 'match':
+        if cmdList[1] != 'match':
+            print('start '+ cmdList[1] + '命令错误 help start查询！')
+            return False
+    elif cmdtype == 'service':
+        if cmdList[1] != 'service':
+            print('start ' + cmdList[1] + '命令错误 help start查询！')
+            return False
     return cmdList
+
+
+def stop_check(currentGame,cmd,cmdtype):
+    '''
+    stop 命令  client端  合理性检查
+    :param currentGame:
+    :param cmd:
+    :param cmdtype: game match service
+    :return:
+    '''
+    if cmdtype == 'game':
+        cf = configparser.SafeConfigParser()
+        cf.read('config.ini')
+        try:
+            stopsec = cf.get('stopSEC', currentGame)
+        except Exception as e:
+            print('配置文件config.ini 中，未配置  ' + currentGame+' 的默认停止时间！')
+            return False
+        cmd.insert(2,int(stopsec))
+        return cmd
+    elif cmdtype == 'match':
+        if cmdList[1] != 'match':
+            print('stop '+ cmdList[1] + '命令错误 help start查询！')
+            return False
+    elif cmdtype == 'service':
+        if cmdList[1] != 'service':
+            print('stop '+ cmdList[1] + '命令错误 help start查询！')
+            return False
+    else:
+        print('stop_check函数  获取的cmdtype参数错误！')
+        return False
 
 
 
@@ -249,17 +318,6 @@ def show_check(currentGame,cmd):
         print('show '+cmd[1]+'命令错误！')
         print('使用help show 参考命令使用方法！')
         return False
-
-def stop_check(currentGame,cmd):
-    cf = configparser.SafeConfigParser()
-    cf.read('config.ini')
-    try:
-        stopsec = cf.get('stopSEC', currentGame)
-    except Exception as e:
-        print('配置文件config.ini 中，未配置  ' + currentGame+' 的默认停止时间！')
-        return False
-    cmd.insert(2,int(stopsec))
-    return cmd
 
 
 
@@ -453,7 +511,7 @@ def compare_cmd_client(currentGame,cmd_1):
 
 
 
-def sendMSG(msg,currentGame):
+def sendMSG(msg,currentGame,cmdtype):
     '''
     发送消息  到对应的服务器 并接受反馈的消息
     :param msg:发送的  list
@@ -462,6 +520,7 @@ def sendMSG(msg,currentGame):
     '''
     currentGame[0].connect()
     msg.insert(1,currentGame[2])
+    msg.insert(2,cmdtype[0])
     msgstr = json.dumps(msg)
     currentGame[0].send(msgstr)
     revstr = currentGame[0].receive()

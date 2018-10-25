@@ -3,12 +3,13 @@ from socket import *
 from xinyou.caction import *
 from xinyou.clientActor import *
 
-# 当前管理的游戏目录 [目录名称，client对象]
+# 当前管理的游戏目录 [client对象,client对象备份，目录名称]
 currentGame = ['empty','','']
 currentMsg = ''
 # 启动游戏后 所有server端的消息集合
-allGameInfo = []
-
+allGameInfo = {}
+clientDict = {}
+cmdtype = ['game']
 
 
 # 从config.ini获取 所有连接的配置信息  ip  port
@@ -20,7 +21,7 @@ if serverList == False:
 # 根据上面的ip port 创建client组
 clientList = getClientGroup(serverList)
 # 从服务器获取 初始目录消息
-allGameInfo = client_getServerGameInfo(clientList)
+allGameInfo,clientDict = client_getServerGameInfo(clientList)
 
 
 while True:
@@ -28,7 +29,7 @@ while True:
     data = input(currentGame[2]+':>')
     cmd = data.strip()
     # 对输入命令分析判断
-    checkResult = command_simpleCheck(cmd,allGameInfo,currentGame)
+    checkResult = command_simpleCheck(cmd,allGameInfo,currentGame,cmdtype,clientDict)
 
     print(checkResult)
     if checkResult == False:
@@ -39,7 +40,7 @@ while True:
     # 合法的命令，发送到服务器 端
     elif type(checkResult) == list:
         # 发送命令 到对应的服务器
-        returnMSG = sendMSG(checkResult,currentGame)
+        returnMSG = sendMSG(checkResult,currentGame,cmdtype)
     else:
         print('程序出错 checkResult:')
         print(checkResult)
@@ -48,12 +49,15 @@ while True:
 
     if returnMSG[0] == 'print':
         print(returnMSG[1])
-    elif returnMSG[0] == 'get':
-        transfer_File(currentGame,returnMSG[1], 'get')
-    elif returnMSG[0] == 'put':
-        transfer_File(currentGame,returnMSG[1],'put')
-    elif returnMSG[0] =='update':
-        transfer_File(currentGame,returnMSG[1],'update')
+
+    elif returnMSG[0] in ['get','put','update']:
+        transfer_File(currentGame,returnMSG[1],returnMSG[0])
+    # elif returnMSG[0] == 'get':
+    #     transfer_File(currentGame,returnMSG[1], 'get')
+    # elif returnMSG[0] == 'put':
+    #     transfer_File(currentGame,returnMSG[1],'put')
+    # elif returnMSG[0] =='update':
+    #     transfer_File(currentGame,returnMSG[1],'update')
     elif returnMSG[0] == 'compare':
         compare_cmd_client(currentGame[2],returnMSG[1])
     elif returnMSG[0] == 'stopRoom':

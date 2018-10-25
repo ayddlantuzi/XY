@@ -6,20 +6,16 @@ from xinyou.saction import *
 import tempfile
 
 HOST = ''
+game_match_serviceDict = {}
 # 获取Sconfig.ini  返回gamedir,PORT
-gamedir,PORT = getSconfig()
+game_match_serviceDict,PORT = getSconfig()
 
 print('端口：' + str(PORT))
-print('游戏目录：' + gamedir)
-
-#当前管理的游戏
-currentGame=['']
-
+print('游戏服务器 管理目录：')
+print(game_match_serviceDict)
 
 BUFSIZ = 2048
 ADDR = (HOST, PORT)
-
-
 
 tcpSerSock = socket(AF_INET,SOCK_STREAM)
 # tcpSerSock.setblocking(0)
@@ -27,7 +23,7 @@ tcpSerSock.bind(ADDR)
 tcpSerSock.listen(5)
 
 #初始化 serverGameInfo
-serverGameInfoList = gameInfoFile(gamedir)
+serverGameInfoList = gameInfoFile(game_match_serviceDict)
 
 while True:
     print('waiting for connection...')
@@ -48,7 +44,7 @@ while True:
         msg = checkMSG_Server()
         tcpCliSock.send(bytes(json.dumps(msg), encoding='utf-8'))
     else:
-        msg = command_ServerCheck(dataList,serverGameInfoList)
+        msg = command_ServerCheck(dataList,serverGameInfoList,game_match_serviceDict)
         print('msg:',msg) 
         # 消息反馈
         tcpCliSock.send(bytes(json.dumps(msg),encoding='utf-8'))
