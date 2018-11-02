@@ -190,10 +190,10 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
             return get_check(currentGame[2],desktop_dir,cmdList)
         elif cmdList[0] == 'put':
             # 判断桌面目录是否存在  上传的文件是否存在
-            return put_check(currentGame[2],cmdList[1])
+            return put_check(currentGame[2],cmdList[1],cmdtype)
         elif cmdList[0] == 'update':
             # 判断上传的文件是否存在
-            return update_check(currentGame[2],cmdList[1])
+            return update_check(currentGame[2],cmdList[1],cmdtype)
         elif cmdList[0] == 'show':
             return show_check(currentGame[2],cmdList)
         elif cmdList[0] == 'back':
@@ -270,45 +270,84 @@ def get_check(currentGame,desktop_dir,cmdList):
     return cmdList
 
 
-def put_check(currentGame,get_fuzzy):
+def put_check(currentGame,get_fuzzy,cmdtype):
     '''
     上传文件时，先判断要上传的文件是否存在
     :param currentGame:
     :return: False 文件不存在
-    文件存在  返回['put',源地址,文件列表list]
+    文件存在  返回
+                ['put',desktop_dir,源地址,文件列表list]  game service
+                ['put','match',desktop_dir,[文件带目录list] ,[[GS,文件list],[MS,文件]...]  ]  match
     '''
     global desktop_dir
-    if not os.path.exists(desktop_dir+currentGame):
+    if not os.path.exists(desktop_dir+currentGame) and cmdtype in ['game','service']:
         os.makedirs(desktop_dir + currentGame)
         print(desktop_dir + currentGame + '   目录不存在，创建成功,请将文件放入此文件夹后再操作！')
         return False
 
+    if cmdtype == 'match':
+        msPath = desktop_dir+currentGame+'\\MS'
+        gsPath = desktop_dir+currentGame+'\\GS'
+        if not os.path.exists(msPath) and not os.path.exists(gsPath):
+            os.makedirs(msPath)
+            print(msPath,'   目录不存在，创建成功,请将文件放入此文件夹后再操作！')
+            return False
 
-    # filelist = []
-    temp = False
+    status= True
     putfile_list = []
-    gamefile = os.listdir(desktop_dir+'\\'+currentGame)
-    if get_fuzzy == 'ini':
-        for file in gamefile:
-            if file[-3:] == 'ini':
-                temp = True
-                putfile_list.append(file)
-                # target ='\\'+currentGame + '\\' + file
-                # source = desktop_dir+currentGame+'\\'+file
-                # filelist.append([source,target])
-    else:
-        status = True
-        for file in gamefile:
-            if get_fuzzy.lower() == file.lower():
-                putfile_list.append(file)
-                status = False
-                break
+    if cmdtype in ['game','service']:
+        # filelist = []
+        gamefile = os.listdir(desktop_dir+'\\'+currentGame)
+        if get_fuzzy == 'ini':
+            for file in gamefile:
+                if file[-3:] == 'ini':
+                    # temp = True
+                    status = False
+                    putfile_list.append(file)
+                    # target ='\\'+currentGame + '\\' + file
+                    # source = desktop_dir+currentGame+'\\'+file
+                    # filelist.append([source,target])
+        else:
+            for file in gamefile:
+                if get_fuzzy.lower() == file.lower():
+                    putfile_list.append(file)
+                    status = False
+                    break
+        if status:
+            print('桌面文件夹 ' + currentGame + ' 中没有 ' + get_fuzzy + ' 文件！')
+            return False
+
+        return ['put',desktop_dir,putfile_list]
+    # ['put',match]
+    elif cmdtype == 'match':
+        fileList = []
+        if get_fuzzy =='ini':
+            if os.path.exists(msPath):
+                msFile = os.listdir(msPath)
+                for file in msFile:
+                    if file[-3:] == 'ini':
+                        status= False
+                        fileList.append(['MS',file])
+                        putfile_list.append(msPath+'\\'+file)
+            if os.path.exists(gsPath):
+                gsFile = os.listdir(gsPath)
+                for file in gsFile:
+                    if file[-3:] == 'ini':
+                        temp = False
+                        fileList.append(['GS',file])
+                        putfile_list.append(gsPath+'\\'+file)
+        if get_fuzzy in ['rt','server.rt']:
+            rt = msPath+'\\server.rt'
+            if os.path.exists(rt):
+                temp = False
+                putfile_list.append(rt)
 
         if status:
             print('桌面文件夹 ' + currentGame + ' 中没有 ' + get_fuzzy + ' 文件！')
             return False
 
-    return ['put',desktop_dir,putfile_list]
+        return ['put','match',desktop_dir,putfile_list,fileList]
+
 
 
 def show_check(currentGame,cmd):
@@ -321,7 +360,7 @@ def show_check(currentGame,cmd):
 
 
 
-def update_check(currentGame,cmd_1):
+def update_check(currentGame,cmd_1,cmdtype):
     '''
     update 语句检查
     update exe  更新serviceLoader文件   确认目录是否存在，确认目录下是否有文件

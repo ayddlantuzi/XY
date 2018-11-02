@@ -453,12 +453,7 @@ def command_ServerCheck(cmdList,serverGameInfo,game_match_serviceDict):
 
 
     elif cmdList[0] == 'put':
-        if cmdtype =='game':
-            msg = put_check_server(gamedir,currentGame,cmdList)
-        elif cmdtype in mstype:
-            msg = put_match_File(cmdList,game_match_serviceDict)
-        else:
-            msg = ['print', 'game、match、service类型输入错误！']
+        msg = put_check_server(gamedir,currentGame,cmdList)
 
 
     elif cmdList[0] == 'update':
@@ -756,21 +751,6 @@ def get_filter_File(currentGame,getMSG):
     print(msg)
     return msg
 
-def put_match_File(cmdList,game_match_serviceDict):
-    '''
-    put rt confg gateway dll exe
-    :param cmdList:
-    :param game_match_serviceDict:
-    :return:
-    '''
-    desktop_dir =cmdList[3]
-    filelist =cmdList[4]
-
-    msg = []
-
-
-    pass
-
 
 def put_check_server(gamedir,currentGame,cmdList):
     '''
@@ -780,25 +760,45 @@ def put_check_server(gamedir,currentGame,cmdList):
     :param get_fuzzy:
     :return:  返回msg  msg1     msg print备份消息     msg1 put消息
     '''
-    desktop_dir =cmdList[3]
-    filelist =cmdList[4]
-
     msg=[]
+    source_target_list = []
+    backupfile = []
+
+    if cmdList[3] == 'match':
+        desktop_dir = cmdList[4]
+        filelist = cmdList[6]
+        sourceFileList = cmdList[5]
+
+        msfile = os.listdir(gamedir+'\\'+currentGame+'\\MS')
+        gsfile = os.listdir(gamedir+'\\'+currentGame+'\\GS')
+        for file in filelist:
+            if file[0] == 'MS' and file[1] in msfile:
+                backupfile.append(['MS',filep[1]])
+            if file[0] == 'GS' and file[1] in gsfile:
+                backupfile.append(['GS',file[1]])
+
+
+    # game service
+    else:
+        desktop_dir =cmdList[3]
+        filelist =cmdList[4]
+
+        gamefile = os.listdir(gamedir + '\\' + currentGame)
+        for file in filelist:
+            if file in gamefile:
+                backupfile.append(file)
+
     print('gamedir:',end='')
     print(gamedir)
     print('currentGame:',end='')
     print(currentGame)
-    gamefile = os.listdir(gamedir+'\\'+currentGame)
 
-    source_target_list = []
-    backupfile = []
-
-    for file in filelist:
-        if file in gamefile:
-            backupfile.append(file)
 
     if len(backupfile) >0:
-        msg = backup_file(gamedir,currentGame,backupfile,backupfile[0][-3:])
+        if cmdList['3'] == 'match':
+            msg = backup_file(gamedir,currentGame,backupfile,'match')
+        else:
+            msg = backup_file(gamedir,currentGame,backupfile,backupfile[0][-3:])
         # print@......+put@..... client 接收后   split'+'
 
     # 传输 源目录 目标目录
@@ -830,18 +830,23 @@ def backup_file(gamedir,currentGame,fileList,folder):
         os.makedirs(backup_dir)
 
     # 游戏目录  备份目录例E:\Game\24StandLand3renServer\backup\ini
-    backup_folder = backup_dir+'\\'+folder
+    # match目录         E:\Match\DDZ\back
+    if folder == 'match':
+        backup_folder = backup_dir
+    else:
+        backup_folder = backup_dir+'\\'+folder
     if not os.path.exists(backup_folder):
         os.makedirs(backup_folder)
+
 
     # 根据当前日期时间 创建备份子目录
     newfolder = time.strftime('%Y-%m-%d %H %M %S',time.localtime(time.time()))
     backup_path = backup_folder + '\\'+newfolder+'\\'
     os.makedirs(backup_path)
 
+    msglist = []
+    maxlen = 0
     if folder in ['ini','dll','exe']:
-        msglist = []
-        maxlen = 0
         for file in fileList:
             file_length = len(file)
             shutil.copy2(gamedir+'\\'+currentGame+'\\'+file,backup_path)
@@ -849,6 +854,13 @@ def backup_file(gamedir,currentGame,fileList,folder):
                 maxlen = file_length
             msglist.append(['被覆盖文件',file,' 已备份！'])
 
+    elif folder == 'match':
+        for file in fileList:
+            file_length = len(file[1])
+            shutil.copy2(gamedir+'\\'+currentGame+'\\'+file[0]+'\\'+file[1],backup_path+file[0]+'\\'+file(1))
+            if file_length > maxlen:
+                maxlen = file_length
+            msglist.append(['被覆盖文件'+file[0]+'\\',file[1],' 已备份！'])
     else:
         msg=['print','saction.py  backup_file方法错误，请检查代码！']
 
