@@ -1,5 +1,5 @@
 # encoding: utf-8
-from socket import *
+import socket
 from time import ctime
 from xinyou.saction import *
 
@@ -17,7 +17,7 @@ print(game_match_serviceDict)
 BUFSIZ = 2048
 ADDR = (HOST, PORT)
 
-tcpSerSock = socket(AF_INET,SOCK_STREAM)
+tcpSerSock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 # tcpSerSock.setblocking(0)
 tcpSerSock.bind(ADDR)
 tcpSerSock.listen(5)

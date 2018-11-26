@@ -233,7 +233,7 @@ def start_check(cmdList,cmdtype):
     return cmdList
 
 
-def stop_check(currentGame,cmd,cmdtype):
+def stop_check(currentGame,cmdList,cmdtype):
     '''
     stop 命令  client端  合理性检查
     :param currentGame:
@@ -241,7 +241,9 @@ def stop_check(currentGame,cmd,cmdtype):
     :param cmdtype: game match service
     :return:
     '''
-    if cmdtype == 'game':
+    print('cmdtype ',cmdtype)
+    print('cmdList ',cmdList)
+    if cmdtype == ['game']:
         cf = configparser.SafeConfigParser()
         cf.read('config.ini')
         try:
@@ -251,11 +253,11 @@ def stop_check(currentGame,cmd,cmdtype):
             return False
         cmd.insert(2,int(stopsec))
         return cmd
-    elif cmdtype == 'match':
+    elif cmdtype == ['match']:
         if cmdList[1] != 'match':
             print('stop '+ cmdList[1] + '命令错误 help start查询！')
             return False
-    elif cmdtype == 'service':
+    elif cmdtype == ['service']:
         if cmdList[1] != 'service':
             print('stop '+ cmdList[1] + '命令错误 help start查询！')
             return False
@@ -263,6 +265,7 @@ def stop_check(currentGame,cmd,cmdtype):
         print('stop_check函数  获取的cmdtype参数错误！')
         return False
 
+    return cmdList
 
 
 def get_check(currentGame,desktop_dir,cmdList):
@@ -351,7 +354,7 @@ def put_check(currentGame,get_fuzzy,cmdtype):
 
 
 def show_check(currentGame,cmd):
-    if cmd[1] in ['room','file']:
+    if cmd[1] in ['room','file','match','service']:
         return cmd
     else:
         print('show '+cmd[1]+'命令错误！')
@@ -360,7 +363,7 @@ def show_check(currentGame,cmd):
 
 
 
-def update_check(currentGame,cmd_1,cmdtype):
+def update_check(currentGame,cmd_1,cmdtype = 'game'):
     '''
     update 语句检查
     update exe  更新serviceLoader文件   确认目录是否存在，确认目录下是否有文件
@@ -377,6 +380,10 @@ def update_check(currentGame,cmd_1,cmdtype):
     exe_file = []
     if currentGame == '':
         print('请先选择 游戏目录！')
+        return False
+
+    if cmdtype == 'service':
+        print('service 暂不支持此功能!')
         return False
 
     if cmd_1 == 'exe':
@@ -397,6 +404,9 @@ def update_check(currentGame,cmd_1,cmdtype):
         else:
             print('本地目录 '+svnServiceLoader_dir+' 不存在！')
     elif cmd_1 == 'dll':
+        if cmdtype == 'match':
+            print('match 暂不支持此功能！')
+            return False
         dll_name = re.sub('^\\d{2,3}','',currentGame)+'.dll'
         dll_dir =dlls_dir + dll_name
         if os.path.exists(dll_dir):
@@ -558,11 +568,14 @@ def sendMSG(msg,currentGame,cmdtype):
     :return: 反馈消息
     '''
     currentGame[0].connect()
+    print(currentGame)
     msg.insert(1,currentGame[2])
     msg.insert(2,cmdtype[0])
     msgstr = json.dumps(msg)
+    print('send:',msgstr)
     currentGame[0].send(msgstr)
     revstr = currentGame[0].receive()
+    print(revstr)
     currentGame[0].close()
     return json.loads(revstr)
 
@@ -572,6 +585,7 @@ def endAction(msg):
     :param msg:
     :return:
     '''
+    pass
 
 
 

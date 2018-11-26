@@ -48,7 +48,9 @@ while True:
 
 
     if returnMSG[0] == 'print':
-        print(returnMSG[1])
+        for i in range(len(returnMSG)):
+            if i != 0:
+                print(returnMSG[i])
 
     elif returnMSG[0] in ['get','put','update']:
         transfer_File(currentGame,returnMSG[1],returnMSG[0])
