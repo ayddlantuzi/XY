@@ -142,6 +142,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
             printGameDir(gameInfo,cmdtype)
             return False
         elif cmdList[0] in ['game','match','service']:
+            currentGame[2] = ''
             cmdtype.pop()
             cmdtype.append(cmdList[0])
             return False
@@ -187,7 +188,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
         elif cmdList[0] == 'stop':
             return stop_check(currentGame[2],cmdList,cmdtype)
         elif cmdList[0] == 'get':
-            return get_check(currentGame[2],desktop_dir,cmdList)
+            return get_check(currentGame[2],desktop_dir,cmdList,cmdtype)
         elif cmdList[0] == 'put':
             # 判断桌面目录是否存在  上传的文件是否存在
             return put_check(currentGame[2],cmdList[1],cmdtype)
@@ -268,7 +269,24 @@ def stop_check(currentGame,cmdList,cmdtype):
     return cmdList
 
 
-def get_check(currentGame,desktop_dir,cmdList):
+def get_check(currentGame,desktop_dir,cmdList,cmdtype):
+
+    if cmdtype == ['match']:
+        matchPath = desktop_dir+currentGame
+        matchPathMS = matchPath + '\\MS'
+        matchPathGS = matchPath + '\\GS'
+        # matchPathMSgate1 = matchPathMS+'\\Gate1'
+        # matchPathMSgate2 = matchPathMS+'\\Gate2'
+
+        print(matchPath)
+        if not os.path.exists(matchPath):
+            os.makedirs(matchPath)
+        if not os.path.exists(matchPathMS):
+            os.makedirs(matchPathMS)
+        if not os.path.exists(matchPathGS):
+            os.makedirs(matchPathGS)
+
+
     cmdList.insert(1,desktop_dir)
     return cmdList
 
@@ -433,6 +451,7 @@ def transfer_File(currentGame,fileList_Info,mode='put'):
     :param mode:   put 上传   get 下载
     :return: 执行在client端  消息直接打印
     '''
+    print('fileList_info ',fileList_Info)
     host = currentGame[0].host
     gamePath = currentGame[2]
     transport  = paramiko.Transport(host,22)
@@ -482,10 +501,11 @@ def transfer_File(currentGame,fileList_Info,mode='put'):
                 else:
                     print(mode + ' transfe rFile 模式错误！')
             except Exception as e:
-                print(filelist[0],end='')
-                print(filelist[1],end='')
+                print('filelist[0] ',filelist[0])
+                print('filelist[1] ',filelist[1])
                 print(e)
 
+        print('msgList ',msgList)
         msg = saction.format_printMSG(msgList,2,maxlen)
         print(msg)
     else:

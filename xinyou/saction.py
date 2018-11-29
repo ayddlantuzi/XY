@@ -444,7 +444,7 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
             # get *** 下载明确的文件名
             # 1、检查目录中的  是否存在ini文件，或者具体文件名称是否存在
             # 2、
-            msg = get_filter_File(currentGame, cmdList)
+            msg = get_filter_File(game_match_serviceDict, cmdList)
         elif cmdtype in mstype:
             # get file  get rt
             msg = get_match_File(cmdList, game_match_serviceDict)
@@ -633,82 +633,134 @@ def get_match_File(cmdList, game_match_serviceDict):
     :param game_match_serviceDict:
     :return:['print',消息]  ['get',[source,target],[source1,target1]....]
     '''
-    gamedir = game_match_serviceDict[cmdList[2]]
+    gamedirFull =game_match_serviceDict[cmdList[2]]
+    gamedir = '\\' + gamedirFull.split('\\')[-1] + '\\'
+    gamedirFull += '\\'
 
-    fileList = ['get']
+    print(cmdList)
+    print(game_match_serviceDict)
+    print('gamedirFull ',gamedirFull)
+    print('get_match_file ',gamedir)
+    fileList = []
     sourceList = []
     targetList = []
+    sourceExistsList = []
+    msg = ['print']
 
     if cmdList[2] == 'match':
-        if cmdList[4] in ['ini', 'gateway.ini', 'gateway', 'config.ini', 'config']:
-            if cmdList[4] in ['ini', 'config.ini', 'config']:
-                sourceServer1 = gamedir + cmdList[1] + '\\MS\\config.ini'
-                sourceList.append(sourceServer1)
-                targetClient1 = cmdList[3] + cmdList[1] + '\\config.ini'
-                targetList.append(targetClient1)
-                if cmdList[4] == 'config.ini':
-                    if os.path.exists(sourceServer1):
-                        fileList.append([sourceServer1, targetClient1])
-
+        if cmdList[4] in ['ini', 'gateway.ini', 'gateway', 'config.ini', 'config','gameconfig','gameconfig.ini']:
+            sourceServer1 = gamedir + cmdList[1] + '\\MS\\config.ini'
             sourceServer2 = gamedir + cmdList[1] + '\\MS\\gateway.ini'
             sourceServer3 = gamedir + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
             sourceServer4 = gamedir + cmdList[1] + '\\MS\\Gate2\\gateway.ini'
-            sourceList.append(sourceServer2)
-            sourceList.append(sourceServer3)
-            sourceList.append(sourceServer4)
-            targetClient2 = cmdList[3] + cmdList[1] + '\\gateway.ini'
+            sourceServer5 = gamedir + cmdList[1] + '\\GS\\GameConfig.ini'
+
+
+            sourceExists1 = gamedirFull + cmdList[1] + '\\MS\\config.ini'
+            sourceExists2 = gamedirFull + cmdList[1] + '\\MS\\gateway.ini'
+            sourceExists3 = gamedirFull + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
+            sourceExists4 = gamedirFull + cmdList[1] + '\\MS\\Gate2\\gateway.ini'
+            sourceExists5 = gamedirFull + cmdList[1] + '\\GS\\GameConfig.ini'
+
+            targetClient1 = cmdList[3] + cmdList[1] + '\\MS\\config.ini'
+            targetClient2 = cmdList[3] + cmdList[1] + '\\MS\\gateway.ini'
             targetClient3 = cmdList[3] + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
-            targetClient4 = cmdList[3] + cmdList[1] + '\\MS\\Gate1\\gateway.ini'
-            targetList.append(targetClient2)
-            targetList.append(targetClient3)
-            targetList.append(targetClient4)
+            targetClient4 = cmdList[3] + cmdList[1] + '\\MS\\Gate2\\gateway.ini'
+            targetClient5 = cmdList[3] + cmdList[1] + '\\GS\\GameConfig.ini'
 
-            for i in range(len(sourceList)):
-                if os.path.exists(sourceList[i]):
-                    fileList.append([sourceList[i], targetList[i]])
-
-            if len(fileList) > 1:
-                return fileList
+            if cmdList[4] in ['config.ini', 'config']:
+                if os.path.exists(sourceExists1):
+                    fileList.append([sourceServer1, targetClient1])
+                else:
+                    msg.append(cmdList[4]+' 下载文件未找到！')
+                    return msg
+            elif cmdList[4] in['gateway','gateway.ini']:
+                if os.path.exists(sourceExists2):
+                    fileList.append([sourceServer2,targetClient2])
+                elif os.path.exists(sourceExists3) and os.path.exists(sourceExists3):
+                    fileList.append([sourceServer3,targetClient3])
+                    fileList.append([sourceServer4,targetClient4])
+                else:
+                    msg.append(cmdList[4]+' 下载文件未找到')
+                    return msg
+            elif cmdList[4] in ['gameconfig','gameconfig.ini']:
+                print('进入 gameconfig 判断')
+                if os.path.exists(sourceExists5):
+                    print('存在文件')
+                    fileList.append([sourceServer5,targetClient5])
+                else:
+                    msg.append(cmdList[4] + ' 下载文件未找到')
+                    return msg
             else:
-                msg = ''
-                for i in sourceList:
-                    msg += i + ' '
-                return ['print', msg + '下载文件未找到！']
+                sourceList.append(sourceServer1)
+                sourceList.append(sourceServer2)
+                sourceList.append(sourceServer3)
+                sourceList.append(sourceServer4)
+                sourceList.append(sourceServer5)
+
+                targetList.append(targetClient1)
+                targetList.append(targetClient2)
+                targetList.append(targetClient3)
+                targetList.append(targetClient4)
+                targetList.append(targetClient5)
+
+                sourceExistsList.append(sourceExists1)
+                sourceExistsList.append(sourceExists2)
+                sourceExistsList.append(sourceExists3)
+                sourceExistsList.append(sourceExists4)
+                sourceExistsList.append(sourceExists5)
+
+                for i in range(len(sourceExistsList)):
+                    if os.path.exists(sourceExistsList[i]):
+                        fileList.append([sourceList[i], targetList[i]])
 
         elif cmdList[4] in ['rt', 'server.rt']:
             sourceServer1 = gamedir + cmdList[1] + '\\MS\\server.rt'
-            targetClient1 = cmdList[3] + cmdList[1] + '\\server.rt'
-            if os.path.exists(sourceServer1):
+            targetClient1 = cmdList[3] + cmdList[1] + '\\MS\\server.rt'
+
+            sourceExists = gamedirFull+'\\'+cmdList[1] + '\\MS\\server.rt'
+            print('sourceServer1 ',sourceServer1)
+            print('targetClient1 ',targetClient1)
+            print('sourceExists ',sourceExists)
+            if os.path.exists(sourceExists):
                 fileList.append([sourceServer1, targetClient1])
-                return fileList
             else:
-                return ['print', sourceServer1 + '  下载文件未找到！']
+                msg.append(cmdList[4] + ' 下载文件未找到！')
+                return msg
 
         else:
-            sourceServer1 = gamedir + cmdList[1] + '\\MS\\' + cmdList[4]
-            if os.path.exists(sourceServer1):
+            sourceServer1 = gamedir + '\\' + cmdList[1] + '\\MS\\' + cmdList[4]
+            sourceExists1 = gamedirFull + '\\' + cmdList[1] + '\\MS\\' + cmdList[4]
+            if os.path.exists(sourceExists1):
                 targetClient1 = cmdList[3] + cmdList[1] + '\\MS\\' + cmdList[4]
                 fileList.append([sourceServer1, targetClient1])
-                return fileList
             else:
-                return ['print', sourceServer1 + '  下载文件未找到！']
+                msg.append(cmdList[4] + ' 下载文件未找到！')
+                return msg
 
+        if len(fileList) > 0:
+            return ['get',fileList]
+        else:
+            msg.append(cmdList[4] + ' 下载文件未找到！')
+            return msg
     elif cmdList[2] == 'service':
         if cmdList[4] in ['config', 'config.ini']:
             sourceServer1 = gamedir + cmdList[1] + '\\config.ini'
             targetClient1 = cmdList[3] + cmdList[1] + '\\config.ini'
+            sourceExists = gamedirFull + cmdList[1] + '\\config.ini'
         else:
             sourceServer1 = gamedir + cmdList[1] + '\\' + cmdList[4]
             targetClient1 = cmdList[3] + cmdList[1] + '\\' + cmdList[4]
+            sourceExists = gamedirFull + cmdList[1] + '\\' + cmdList[4]
 
-        if os.path.exists(sourceServer1):
+        if os.path.exists(sourceExists):
             fileList.append([sourceServer1, targetClient1])
             return fileList
         else:
-            return ['print', sourceServer1 + ' 下载文件未找到']
+            msg.append(cmdList[4]+' 下载文件未找到！')
+            return msg
 
-
-def get_filter_File(currentGame, getMSG):
+def get_filter_File(game_match_serviceDict,getMSG):
     '''                                      固定桌面目录
     get ini 用，获取游戏目录下 特定后缀 文件
     :param gamedir: 游戏总目录
@@ -716,23 +768,25 @@ def get_filter_File(currentGame, getMSG):
     :param get: 文件后缀 'ini' 返回所有ini文件   其他****   返回****文件
     :return:
     '''
-    global gamedir
-    desktop_dir = getMSG[2]
-    get_fuzzy = getMSG[3]
+    currentGame = getMSG[1]
+    gamedir = game_match_serviceDict[getMSG[2]]
+    sftpdir = gamedir.split('\\')[-1]
+    desktop_dir = getMSG[3]
+    get_fuzzy = getMSG[4]
     msg = []
     filelist = []
     gamefile = os.listdir(gamedir + '\\' + currentGame)
     if get_fuzzy.lower() == 'ini':
         for file in gamefile:
             if file[-3:].lower() == 'ini':
-                sourceServer = '\\' + currentGame + '\\' + file
+                sourceServer = '\\'+sftpdir+'\\' + currentGame + '\\' + file
                 targetClient = desktop_dir + currentGame + '\\' + file
                 filelist.append([sourceServer, targetClient])
     else:
         status = True
         for file in gamefile:
             if get_fuzzy.lower() == file.lower():
-                sourceServer = '\\' + currentGame + '\\' + file
+                sourceServer = '\\'+sftpdir+'\\' + currentGame + '\\' + file
                 targetClient = desktop_dir + currentGame + '\\' + file
                 filelist.append([sourceServer, targetClient])
                 status = False
