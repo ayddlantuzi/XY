@@ -432,7 +432,7 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
 
     elif cmdList[0] == 'show':
         if cmdtype == 'game':
-            msg = show_cmd_server(gamedir, currentGame, cmdList[2])
+            msg = show_cmd_server(gamedir, currentGame, cmdList[3])
         elif cmdtype in mstype:
             msg = showMatchServer(cmdList, game_match_serviceDict)
         else:
@@ -453,7 +453,7 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
 
 
     elif cmdList[0] == 'put':
-        msg = put_check_server(gamedir, currentGame, cmdList)
+        msg = put_check_server(gamedir, currentGame, cmdList,game_match_serviceDict)
 
 
     elif cmdList[0] == 'update':
@@ -461,7 +461,7 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
         # update dll 升级游戏dll
         # 升级前 建立备份目录  并备份被升级的文件
         if cmdtype == 'game':
-            msg = update_cmd_server(gamedir, currentGame, cmdList)
+            msg = update_cmd_server(gamedir, currentGame, cmdList,game_match_serviceDict)
         elif cmdtype in mstype:
             msg = ['print', '暂时未设置！']
         else:
@@ -471,16 +471,14 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
 
 
     elif cmdList[0] == 'back':
-        if cmdtype in ['game', 'service']:
-            msg = back_cmd_server(gamedir, currentGame, cmdList[2])
-        elif cmdtype == 'match':
-            msg = ['print', '暂时未设置！']
+        if cmdtype in ['game', 'service','match']:
+            msg = back_cmd_server(gamedir, currentGame, cmdList)
         else:
             msg = ['print', 'game、match、service类型输入错误！']
 
     elif cmdList[0] == 'compare':
         if cmdtype == 'game':
-            msg = compare_cmd_server(gamedir, currentGame, cmdList[2])
+            msg = compare_cmd_server(gamedir, currentGame, cmdList[3])
         elif cmdtype in mstype:
             msg = ['print', '暂未设置！']
         else:
@@ -497,10 +495,11 @@ def compare_cmd_server(gamedir, currentGame, suffixal):
     :return:
     '''
     msg = []
-    compareFilePath = gamedir + currentGame + '\\'
+    compareFilePath = gamedir +'\\'+ currentGame + '\\'
     compareFileSuffixal = []
     compareFile = []
     dllfile = re.sub('^\\d{2,3}', '', currentGame) + '.dll'
+    print('dllfile ',dllfile)
 
     if suffixal == 'exe':
         compareFileSuffixal = ['.exe', '.dll']
@@ -509,7 +508,7 @@ def compare_cmd_server(gamedir, currentGame, suffixal):
     else:
         msg = ['print', 'compare ' + suffixal + ' 命令错误！']
     if len(compareFileSuffixal) == 1:
-
+        print('存在判断  ',compareFilePath + dllfile)
         if os.path.exists(compareFilePath + dllfile):
             compareFile.append(
                 [dllfile, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(compareFilePath + dllfile)))])
@@ -530,7 +529,7 @@ def compare_cmd_server(gamedir, currentGame, suffixal):
     return msg
 
 
-def back_cmd_server(gamedir, currentGame, suffixal):
+def back_cmd_server(gamedir, currentGame, cmdList):
     '''
     还原备份文件，还原最近一次备份
     :param gamedir:
@@ -540,7 +539,9 @@ def back_cmd_server(gamedir, currentGame, suffixal):
     '''
     msg = []
     log = ''
-    back_source_dir = gamedir + currentGame + '\\backup\\' + suffixal
+    typeGMS = cmdList[2]
+    suffixal = cmdList[3]
+    back_source_dir = gamedir +'\\'+ currentGame + '\\backup\\' + suffixal
     print(back_source_dir)
 
     if os.path.exists(back_source_dir):
@@ -549,7 +550,8 @@ def back_cmd_server(gamedir, currentGame, suffixal):
             log = '没有' + suffixal + ' 的备份文件！'
         else:
             backdir = back_source_dir + '\\' + file.pop(-1)
-            log = copyAllFileto(backdir, gamedir + currentGame)
+
+            log = copyAllFileto(backdir, gamedir +'\\'+ currentGame,typeGMS)
     else:
         log = '没有' + suffixal + ' 的备份文件！'
 
@@ -557,7 +559,7 @@ def back_cmd_server(gamedir, currentGame, suffixal):
     return msg
 
 
-def copyAllFileto(sourceDir, targetDir):
+def copyAllFileto(sourceDir, targetDir,typeGMS = 'game'):
     '''
     将目录下所有的还原到 游戏目录，并且删除目录
     :param sourceDir:备份目录，游戏目录
@@ -567,30 +569,62 @@ def copyAllFileto(sourceDir, targetDir):
     msgList = []
     maxlen = 0
     backfile = os.listdir(sourceDir)
+    print('backfile ',backfile)
     if len(backfile) == 0:
         msg = sourceDir + '目录中没有文件,目录被删除！'
         shutil.rmtree(sourceDir)
     else:
-        for file in backfile:
-            try:
-                shutil.copy2(sourceDir + '\\' + file, targetDir)
-                width = len(file)
-                if width > maxlen:
-                    maxlen = width
-                msgList.append(
-                    [file, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(sourceDir + '\\' + file))),
-                     '还原成功!'])
-                os.remove(sourceDir + '\\' + file)
-            except Exception as e:
-                print(e)
-                msgList.append([file, '', e])
-        if len(os.listdir(sourceDir)) == 0:
-            shutil.rmtree(sourceDir)
+        if typeGMS == 'match':
+            for f in backfile:
+                fo = sourceDir+'\\' + f
+                print('fo ',fo)
+                fol = os.listdir(fo)
+                print('fol ',fol)
+                for file in fol:
+                    try:
+                        sourceFile = fo+'\\'+file
+                        targetFile = targetDir+'\\'+f+'\\'+file
+                        print('传送文件 ',sourceFile,targetFile)
+                        shutil.copy2(sourceFile,targetFile)
+                        width = len(file)
+                        if width > maxlen:
+                            maxlen = width
+                        msgList.append(
+                            [file,
+                             time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(fo+'\\'+file))),
+                             '还原成功!'])
+
+                        os.remove(sourceFile)
+                    except Exception as e:
+                        print(e)
+                        msgList.append([file,'',e])
+                if len(os.listdir(fo)) == 0:
+                    print('删除目录 ',fo)
+                    shutil.rmtree(fo)
+            if len(os.listdir(sourceDir)) == 0:
+                print('删除目录 ',sourceDir)
+                shutil.rmtree(sourceDir)
+        else:
+            for file in backfile:
+                try:
+                    shutil.copy2(sourceDir + '\\' + file, targetDir)
+                    width = len(file)
+                    if width > maxlen:
+                        maxlen = width
+                    msgList.append(
+                        [file, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(sourceDir + '\\' + file))),
+                         '还原成功!'])
+                    os.remove(sourceDir + '\\' + file)
+                except Exception as e:
+                    print(e)
+                    msgList.append([file, '', e])
+            if len(os.listdir(sourceDir)) == 0:
+                shutil.rmtree(sourceDir)
         msg = format_printMSG(msgList, 1, maxlen)
     return msg
 
 
-def update_cmd_server(gamedir, currentGame, cmdList):
+def update_cmd_server(gamedir, currentGame, cmdList,game_match_serviceDict):
     '''
     更新 exe   dll  命令
     :param gamedir:
@@ -611,13 +645,15 @@ def update_cmd_server(gamedir, currentGame, cmdList):
         # 多个文件 备份并更新ServiceLoader
         msg = backup_file(gamedir, currentGame, rev_update_cmd, 'exe')
 
+
+    source_game = '\\' + gamedir.split('\\')[-1]
     # 传输 源目录 目标目录
     for file in rev_update_cmd:
         if cmdList[2] == 'game':
-            targetClient = '\\' + currentGame + '\\' + file
+            targetClient = source_game+'\\' + currentGame + '\\' + file
         # match
         else:
-            targetClient = '\\' + currentGame + '\\GS\\' + file
+            targetClient = source_game+'\\' + currentGame + '\\GS\\' + file
         sourceServer = source_dir + file
         source_target_list.append([sourceServer, targetClient])
 
@@ -801,7 +837,7 @@ def get_filter_File(game_match_serviceDict,getMSG):
     return msg
 
 
-def put_check_server(gamedir, currentGame, cmdList):
+def put_check_server(gamedir, currentGame, cmdList,game_match_serviceDict):
     '''
     put  上传用，判断目录是否存在，上传做备份
     :param gamedir:
@@ -813,7 +849,7 @@ def put_check_server(gamedir, currentGame, cmdList):
     source_target_list = []
     backupfile = []
 
-    if cmdList[3] == 'match':
+    if cmdList[2] == 'match':
         desktop_dir = cmdList[4]
         filelist = cmdList[6]
         sourceFileList = cmdList[5]
@@ -822,9 +858,11 @@ def put_check_server(gamedir, currentGame, cmdList):
         gsfile = os.listdir(gamedir + '\\' + currentGame + '\\GS')
         for file in filelist:
             if file[0] == 'MS' and file[1] in msfile:
-                backupfile.append(['MS', filep[1]])
-            if file[0] == 'GS' and file[1] in gsfile:
+                backupfile.append(['MS', file[1]])
+                print('备份文件  ',file[1])
+            elif file[0] == 'GS' and file[1] in gsfile:
                 backupfile.append(['GS', file[1]])
+                print('备份文件  ', file[1])
 
 
     # game service
@@ -842,17 +880,26 @@ def put_check_server(gamedir, currentGame, cmdList):
     print('currentGame:', end='')
     print(currentGame)
 
+    # 备份覆盖文件
     if len(backupfile) > 0:
-        if cmdList['3'] == 'match':
-            msg = backup_file(gamedir, currentGame, backupfile, backupfile[0][-3:0], 'match')
+        if cmdList[2] == 'match':
+            msg = backup_file(gamedir, currentGame, backupfile, cmdList[3], 'match')
         else:
             msg = backup_file(gamedir, currentGame, backupfile, backupfile[0][-3:])
             # print@......+put@..... client 接收后   split'+'
 
+    serverDir = game_match_serviceDict[cmdList[2]].split('\\').pop(-1)
     # 传输 源目录 目标目录
     for file in filelist:
-        targetClient = '\\' + currentGame + '\\' + file
-        sourceServer = desktop_dir + currentGame + '\\' + file
+
+        if cmdList[2] == 'match':
+            filedir = file[0] + '\\' + file[1]
+
+        else:
+            filedir = file
+
+        targetClient = '\\' + serverDir + '\\' + currentGame + '\\' + filedir
+        sourceServer = desktop_dir + currentGame + '\\' + filedir
         source_target_list.append([sourceServer, targetClient])
 
     msg.insert(0, source_target_list)
@@ -861,7 +908,7 @@ def put_check_server(gamedir, currentGame, cmdList):
     return msg
 
 
-def backup_file(gamedir, currentGame, fileList, folder, type='game'):
+def backup_file(gamedir, currentGame, fileList, folder, typeGMS='game'):
     '''
     升级文件  ini 时   备份文件用
     :param gamedir:
@@ -877,7 +924,19 @@ def backup_file(gamedir, currentGame, fileList, folder, type='game'):
 
     # 游戏目录  备份目录例E:\Game\24StandLand3renServer\backup\ini
     # match目录         E:\Match\DDZ\back\ini
-    backup_folder = backup_dir + '\\' + folder
+    if type == 'match':
+        if folder in ['ini','gameconfig','config','gateway']:
+            backMatchFolder = 'ini'
+        elif folder == 'rt':
+            backMatchFolder = 'rt'
+        elif folder == 'matchexe':
+            backMatchFolder = 'matchexe'
+        elif folder == 'exe':
+            backMatchFolder = 'exe'
+
+        backup_folder = backup_dir+'\\' + backMatchFolder
+    else:
+        backup_folder = backup_dir + '\\' + folder
 
     if not os.path.exists(backup_folder):
         os.makedirs(backup_folder)
@@ -886,11 +945,14 @@ def backup_file(gamedir, currentGame, fileList, folder, type='game'):
     newfolder = time.strftime('%Y-%m-%d %H %M %S', time.localtime(time.time()))
     backup_path = backup_folder + '\\' + newfolder + '\\'
     os.makedirs(backup_path)
+    if typeGMS =='match':
+        os.makedirs(backup_path+'\\GS')
+        os.makedirs(backup_path+'\\MS')
 
     msglist = []
     maxlen = 0
-    if folder in ['ini', 'dll', 'exe']:
-        if type == 'game':
+    if folder in ['ini', 'dll', 'exe','rt']:
+        if typeGMS == 'game':
             for file in fileList:
                 file_length = len(file)
                 shutil.copy2(gamedir + '\\' + currentGame + '\\' + file, backup_path)
@@ -898,11 +960,11 @@ def backup_file(gamedir, currentGame, fileList, folder, type='game'):
                     maxlen = file_length
                 msglist.append(['被覆盖文件', file, ' 已备份！'])
 
-        elif folder == 'match':
+        elif typeGMS == 'match':
             for file in fileList:
                 file_length = len(file[1])
                 shutil.copy2(gamedir + '\\' + currentGame + '\\' + file[0] + '\\' + file[1],
-                             backup_path + file[0] + '\\' + file(1))
+                             backup_path + file[0] + '\\' + file[1])
                 if file_length > maxlen:
                     maxlen = file_length
                 msglist.append(['被覆盖文件' + file[0] + '\\', file[1], ' 已备份！'])
@@ -972,7 +1034,7 @@ def show_cmd_server(gamedir, currentGame, info):
     msgList = []
     maxlen = 0
     if info == 'room':
-        path = gamedir + currentGame + '\\run'
+        path = gamedir +'\\'+ currentGame + '\\run'
         if os.path.exists(path):
             run_folder_files = os.listdir(path)
             xmlfile = []
@@ -996,7 +1058,7 @@ def show_cmd_server(gamedir, currentGame, info):
         else:
             msg = '目录 ' + path + '不存在！'
     elif info == 'file':
-        path = gamedir + currentGame
+        path = gamedir +'\\'+ currentGame
         if os.path.exists(path):
             game_folder_files = os.listdir(path)
         if len(game_folder_files) > 0:

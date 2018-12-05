@@ -53,6 +53,8 @@ while True:
                 print(returnMSG[i])
 
     elif returnMSG[0] in ['get','put','update']:
+        if 'print' in returnMSG:
+            print(returnMSG.pop())
         transfer_File(currentGame,returnMSG[1],returnMSG[0])
     # elif returnMSG[0] == 'get':
     #     transfer_File(currentGame,returnMSG[1], 'get')
@@ -69,6 +71,9 @@ while True:
         pass
 
         # 解析返回的消息
+
+
+
 
 
 

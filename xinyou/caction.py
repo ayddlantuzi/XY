@@ -191,6 +191,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
             return get_check(currentGame[2],desktop_dir,cmdList,cmdtype)
         elif cmdList[0] == 'put':
             # 判断桌面目录是否存在  上传的文件是否存在
+
             return put_check(currentGame[2],cmdList[1],cmdtype)
         elif cmdList[0] == 'update':
             # 判断上传的文件是否存在
@@ -198,11 +199,19 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
         elif cmdList[0] == 'show':
             return show_check(currentGame[2],cmdList)
         elif cmdList[0] == 'back':
-            if not cmdList[1] in ['ini','exe','dll']:
-                print('back 命令错误help back 查询命令的使用方法！')
-                return False
-            else:
-                return cmdList
+            if cmdtype == ['match']:
+                if cmdList[1] in ['ini','exe','dll','matchexe','rt']:
+                    return cmdList
+            elif cmdList[1] in ['ini','exe','dll']:
+                if cmdtype == ['game']:
+                    return cmdList
+            elif cmdtype == ['service']:
+                if cmdList[1] in ['ini','exe']:
+                    return cmdList
+
+            print('back 命令错误help back 查询命令的使用方法！')
+            return False
+
         elif cmdList[0] == 'compare':
             if not cmdList[1] in ['exe','dll']:
                 print('compare 命令错误 help compare 查询命令的使用方法')
@@ -300,23 +309,31 @@ def put_check(currentGame,get_fuzzy,cmdtype):
                 ['put',desktop_dir,源地址,文件列表list]  game service
                 ['put','match',desktop_dir,[文件带目录list] ,[[GS,文件list],[MS,文件]...]  ]  match
     '''
+    print('put check')
+    print(cmdtype)
+    print(get_fuzzy)
+    print(currentGame)
     global desktop_dir
-    if not os.path.exists(desktop_dir+currentGame) and cmdtype in ['game','service']:
+    if not os.path.exists(desktop_dir+currentGame) and cmdtype[0] in ['game','service']:
         os.makedirs(desktop_dir + currentGame)
         print(desktop_dir + currentGame + '   目录不存在，创建成功,请将文件放入此文件夹后再操作！')
         return False
 
-    if cmdtype == 'match':
+    if cmdtype == ['match']:
         msPath = desktop_dir+currentGame+'\\MS'
         gsPath = desktop_dir+currentGame+'\\GS'
-        if not os.path.exists(msPath) and not os.path.exists(gsPath):
+        if not os.path.exists(msPath) or not os.path.exists(gsPath):
             os.makedirs(msPath)
+            os.makedirs(gsPath)
             print(msPath,'   目录不存在，创建成功,请将文件放入此文件夹后再操作！')
             return False
 
+
+
     status= True
     putfile_list = []
-    if cmdtype in ['game','service']:
+    fileList = []
+    if cmdtype[0] in ['game','service']:
         # filelist = []
         gamefile = os.listdir(desktop_dir+'\\'+currentGame)
         if get_fuzzy == 'ini':
@@ -340,9 +357,12 @@ def put_check(currentGame,get_fuzzy,cmdtype):
 
         return ['put',desktop_dir,putfile_list]
     # ['put',match]
-    elif cmdtype == 'match':
-        fileList = []
+    elif cmdtype == ['match']:
+
         if get_fuzzy =='ini':
+            print('msPath ',msPath)
+            print('gsPath ',gsPath)
+
             if os.path.exists(msPath):
                 msFile = os.listdir(msPath)
                 for file in msFile:
@@ -354,20 +374,24 @@ def put_check(currentGame,get_fuzzy,cmdtype):
                 gsFile = os.listdir(gsPath)
                 for file in gsFile:
                     if file[-3:] == 'ini':
-                        temp = False
+                        status = False
                         fileList.append(['GS',file])
                         putfile_list.append(gsPath+'\\'+file)
+
         if get_fuzzy in ['rt','server.rt']:
             rt = msPath+'\\server.rt'
+            print('rt ',msPath)
+            print('rt ',rt)
             if os.path.exists(rt):
-                temp = False
+                status = False
+                fileList.append(['MS','server.rt'])
                 putfile_list.append(rt)
 
         if status:
             print('桌面文件夹 ' + currentGame + ' 中没有 ' + get_fuzzy + ' 文件！')
             return False
 
-        return ['put','match',desktop_dir,putfile_list,fileList]
+    return ['put',get_fuzzy,desktop_dir,putfile_list,fileList]
 
 
 
@@ -494,6 +518,7 @@ def transfer_File(currentGame,fileList_Info,mode='put'):
                     msgList.append(['文件', filename, '成功下载到桌面目录！'])
                     # print('文件   '+filelist[0].split('\\')[-1]+'  成功下载到桌面目录!')
                 elif mode == 'update':
+                    print('进入 update mode')
                     sftp.put(filelist[0], filelist[1])
                     sftp.utime(filelist[1], (os.path.getatime(filelist[0]), os.path.getmtime(filelist[0])))
                     msgList.append(['文件',filename, '更新成功！'])
