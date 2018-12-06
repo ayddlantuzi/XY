@@ -19,6 +19,7 @@ svnServiceLoader_dir = ''
 dlls_dir = ''
 timerList = []
 timerLock = threading.Lock()
+svnmatchexe_dir = ''
 
 
 def getServerIpPort():
@@ -26,7 +27,7 @@ def getServerIpPort():
     从config.ini文件获取要连接服务器的 IP和端口    初始化桌面目录  svn目录  dll目录
     :return: [['GameServer 扑克服务器', ('192.168.0.1', '8001')], ['GameServer 麻将服务器', ('192.168.0.2', '8002')]]
     '''
-    global desktop_dir,svnServiceLoader_dir,dlls_dir
+    global desktop_dir,svnServiceLoader_dir,dlls_dir,svnmatchexe_dir
     nameIpPortList = []
     cf = configparser.SafeConfigParser()
     cf.read('config.ini')
@@ -54,11 +55,17 @@ def getServerIpPort():
     try:
         dlls_dir = cf.get('info','svnDll_path')
     except Exception as e:
+        print('请在config.ini配置 svn Matchexe目录地址！格式如下')
+        print('[info]')
+        print('svnMatchexe_path=')
+        return False
+    try:
+        svnmatchexe_dir = cf.get('info','svnMatchexe_path')
+    except Exception as e:
         print('请在config.ini配置 svn单款dll目录地址！格式如下')
         print('[info]')
         print('svnDll_path=')
         return False
-
 
     return nameIpPortList
 
@@ -213,7 +220,7 @@ def command_simpleCheck(cmd,gameInfo,currentGame,cmdtype,clientDict):
             return False
 
         elif cmdList[0] == 'compare':
-            if not cmdList[1] in ['exe','dll']:
+            if not cmdList[1] in ['exe','dll','matchexe']:
                 print('compare 命令错误 help compare 查询命令的使用方法')
                 return False
             else:
@@ -416,7 +423,7 @@ def update_check(currentGame,cmd_1,cmdtype = 'game'):
     通过： 返回
 
     '''
-    global svnServiceLoader_dir
+    global svnServiceLoader_dir,svnmatchexe_dir
     global dlls_dir
 
     exe_file = []
@@ -442,7 +449,7 @@ def update_check(currentGame,cmd_1,cmdtype = 'game'):
                             exe_file.append(f)
                 exe_file.append('ServiceLoader.exe')
                 # print(exe_file_str)
-                return ['update',svnServiceLoader_dir,exe_file]
+                return ['update',svnServiceLoader_dir,exe_file,cmd_1]
         else:
             print('本地目录 '+svnServiceLoader_dir+' 不存在！')
     elif cmd_1 == 'dll':
@@ -453,11 +460,18 @@ def update_check(currentGame,cmd_1,cmdtype = 'game'):
         dll_dir =dlls_dir + dll_name
         if os.path.exists(dll_dir):
             # 返回上传的dll文件
-            return ['update',dlls_dir,[dll_name]]
+            return ['update',dlls_dir,[dll_name],cmd_1]
         else:
             print('文件或目录 '+dlls_dir+' 不存在，请检查！')
             print('Tip：游戏目录命名规则  kindID+dll名称   例：22CrazyLand3renServer\n'
                   '     update dll 命令会根据  22CrazyLand3renServer 到dll文件夹寻找 CrazyLand3renServer.dll 文件！')
+    elif cmd_1 =='matchexe' and cmdtype == 'match':
+        matchexe = svnmatchexe_dir + 'matchserver_x64_r.exe'
+        matchgateway = svnmatchexe_dir + 'gateway_x64_release.exe'
+        if os.path.exists(matchexe) and os.path.exists(matchgateway):
+            return ['update',svnmatchexe_dir,['matchserver_x64_r.exe','gateway_x64_release.exe'],cmd_1]
+        else:
+            print(svnmatchexe_dir+'目录下matchserver_x64_r.exe 或 gateway_x64_release.exe  不存在！')
     else:
         print('update '+cmd_1+'  命令不正确！')
         print('命令帮助  help update')
@@ -544,7 +558,7 @@ def compare_cmd_client(currentGame,cmd_1):
     :param cmd_1:
     :return:
     '''
-    global svnServiceLoader_dir
+    global svnServiceLoader_dir,svnmatchexe_dir
     global dlls_dir
 
     maxlen = 0
@@ -564,6 +578,37 @@ def compare_cmd_client(currentGame,cmd_1):
             compareFile[0].append(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(os.path.getmtime(dllpath))))
         else:
             compareFile[0].append('')
+    elif num == 2:
+    # matchexe
+        exeFile = ['matchserver_x64_r.exe','gateway_x64_release.exe']
+
+        for x in range(num):
+            length = len(compareFile[x][0])
+            if length > maxlen:
+                maxlen = length
+
+            status = False
+            removeObj = ''
+            for file in exeFile:
+                if compareFile[x][0] == file:
+                    compareFile[x].append(
+                        time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(svnmatchexe_dir + file))))
+                    status = True
+                    removeObj = file
+                    break
+
+            if status:
+                exeFile.remove(removeObj)
+            else:
+                compareFile[x].append('')
+
+        if len(exeFile) > 0:
+            for file in exeFile:
+                length = len(file)
+                if length > maxlen:
+                    maxlen = length
+                compareFile.append(
+                    [file, '', time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(svnmatchexe_dir + file)))])
     else:
         # 统计svn目录下的 dll 和exe文件
         svnFile = []
@@ -571,12 +616,12 @@ def compare_cmd_client(currentGame,cmd_1):
             if file[-4:] == '.dll':
                 svnFile.append(file)
         svnFile.append('ServiceLoader.exe')
+        dllFiles = os.listdir(dlls_dir)
 
         for x in range(num):
             length = len(compareFile[x][0])
             if length > maxlen:
                 maxlen = length
-
 
             status = False
             removeObj = ''
@@ -586,12 +631,18 @@ def compare_cmd_client(currentGame,cmd_1):
                     status = True
                     removeObj = file
                     break
+                # 检查show match  exe时候  单款Dll的情况
+                elif compareFile[x][0] in dllFiles:
+                    compareFile[x].append(
+                        time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(dlls_dir + compareFile[x][0]))))
+                    break
+
             if status:
                 svnFile.remove(removeObj)
             else:
                 compareFile[x].append('')
 
-        if len(svnFile) >0:
+        if len(svnFile) > 0:
             for file in svnFile:
                 length = len(file)
                 if length > maxlen:

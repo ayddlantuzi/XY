@@ -460,9 +460,9 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
         # update exe 升级servicesLoader
         # update dll 升级游戏dll
         # 升级前 建立备份目录  并备份被升级的文件
-        if cmdtype == 'game':
+        if cmdtype in ['game','match']:
             msg = update_cmd_server(gamedir, currentGame, cmdList,game_match_serviceDict)
-        elif cmdtype in mstype:
+        elif cmdtype == 'service':
             msg = ['print', '暂时未设置！']
         else:
             msg = ['print', 'game、match、service类型输入错误！']
@@ -480,11 +480,41 @@ def command_ServerCheck(cmdList, serverGameInfo, game_match_serviceDict):
         if cmdtype == 'game':
             msg = compare_cmd_server(gamedir, currentGame, cmdList[3])
         elif cmdtype in mstype:
-            msg = ['print', '暂未设置！']
+            msg = compare_match_server(gamedir,currentGame,cmdList[3])
         else:
             msg = ['print', 'game、match、service类型输入错误！']
     return msg
 
+
+def compare_match_server(gamedir,currentGame,suffixal):
+    msg = []
+    compareFilePathGS = gamedir + '\\' + currentGame + '\\GS\\'
+    compareFilePathMS = gamedir + '\\' + currentGame + '\\MS\\'
+    compareFileSuffixal = []
+    compareFile = []
+    # dllfile = re.sub('^\\d{2,3}', '', currentGame) + '.dll'
+    # print('dllfile ', dllfile)
+
+    if suffixal == 'matchexe':
+        compareFileSuffixal = ['.exe']
+        compareFilePath = compareFilePathMS
+    elif suffixal == 'exe':
+        compareFileSuffixal = ['.exe', '.dll']
+        compareFilePath = compareFilePathGS
+    else:
+        msg = ['print', 'compare ' + suffixal + ' 命令错误！']
+
+    for file in os.listdir(compareFilePath):
+        if file[-4:] in compareFileSuffixal:
+            compareFile.append(
+                [file, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(os.path.getmtime(compareFilePath + file)))])
+
+        if len(compareFile) > 0:
+            msg = ['compare', compareFile]
+        else:
+            msg = ['print', '未找到对应文件！']
+
+    return msg
 
 def compare_cmd_server(gamedir, currentGame, suffixal):
     '''
@@ -634,26 +664,27 @@ def update_cmd_server(gamedir, currentGame, cmdList,game_match_serviceDict):
     '''
 
     source_target_list = []
+    update_1 = cmdList[5]
+    cmdtype = cmdList[2]
     rev_update_cmd = cmdList[4]
     source_dir = cmdList[3]
     len_rev_cmd = len(rev_update_cmd)
     msg = ''
-    if len_rev_cmd == 1:
-        # 只有一个文件  备份并更新dll
-        msg = backup_file(gamedir, currentGame, rev_update_cmd, 'dll')
-    elif len_rev_cmd > 0:
-        # 多个文件 备份并更新ServiceLoader
-        msg = backup_file(gamedir, currentGame, rev_update_cmd, 'exe')
+    if len_rev_cmd > 0:
+        msg = backup_file(gamedir, currentGame, rev_update_cmd, update_1,typeGMS=cmdtype)
 
 
     source_game = '\\' + gamedir.split('\\')[-1]
     # 传输 源目录 目标目录
     for file in rev_update_cmd:
-        if cmdList[2] == 'game':
+        if cmdtype == 'game':
             targetClient = source_game+'\\' + currentGame + '\\' + file
         # match
         else:
-            targetClient = source_game+'\\' + currentGame + '\\GS\\' + file
+            if update_1 == 'exe':
+                targetClient = source_game+'\\' + currentGame + '\\GS\\' + file
+            elif update_1 == 'matchexe':
+                targetClient = source_game + '\\' + currentGame + '\\MS\\' + file
         sourceServer = source_dir + file
         source_target_list.append([sourceServer, targetClient])
 
@@ -1047,7 +1078,6 @@ def show_cmd_server(gamedir, currentGame, info):
                     whidth = chinese(i, 2)
                     if whidth > maxlen:
                         maxlen = whidth
-
                     if portISopen(getPortFromXML(i)):
                         # 端口状态，端口被占用 n='1'
                         n = '>>>>>已启用！'
